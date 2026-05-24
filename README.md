@@ -19,6 +19,7 @@ Custom HATS installer for Magic Monkei.
 3. The package includes the installer payload at `/switch/mm-tools/hats-installer.bin`.
 
 The app installs to `/switch/mm-tools/mm-tools.nro` and stores config/cache files under `/config/mm-tools`.
+The default theme includes the neon city background at `romfs:/theme/mm_background.jpg`.
 
 ## Features
 
