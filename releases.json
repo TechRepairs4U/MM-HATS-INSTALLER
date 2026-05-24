@@ -1,0 +1,38 @@
+[
+  {
+    "tag_name": "HATS-Latest-MM",
+    "name": "HATS Latest MM",
+    "published_at": "2026-03-18T22:27:22Z",
+    "prerelease": false,
+    "body": "Full HATS without firmware update. This uses GitHub's latest-release URL.",
+    "author": {
+      "login": "TechRepairs4U",
+      "html_url": "https://github.com/TechRepairs4U"
+    },
+    "assets": [
+      {
+        "name": "HATS.MM.zip",
+        "size": 154941235,
+        "browser_download_url": "https://github.com/TechRepairs4U/HATS/releases/latest/download/HATS.MM.zip"
+      }
+    ]
+  },
+  {
+    "tag_name": "HATS-Latest-Minimalistic",
+    "name": "HATS Latest Minimalistic",
+    "published_at": "2026-03-18T22:27:22Z",
+    "prerelease": false,
+    "body": "Full HATS with no themes, official-looking. This uses GitHub's latest-release URL.",
+    "author": {
+      "login": "TechRepairs4U",
+      "html_url": "https://github.com/TechRepairs4U"
+    },
+    "assets": [
+      {
+        "name": "HATS.Minimalistic.zip",
+        "size": 146882938,
+        "browser_download_url": "https://github.com/TechRepairs4U/HATS/releases/latest/download/HATS.Minimalistic.zip"
+      }
+    ]
+  }
+]
