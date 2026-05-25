@@ -242,6 +242,11 @@ SidebarEntryArray::SidebarEntryArray(const std::string& title, const Items& item
     }
 
     m_list_callback = [&index, this]() {
+        if (m_items.empty()) {
+            App::Notify("No options available"_i18n);
+            return;
+        }
+
         App::Push<PopupList>(
             m_title, m_items, index, m_index
         );
@@ -266,6 +271,11 @@ SidebarEntryArray::SidebarEntryArray(const std::string& title, const Items& item
 , m_index{index} {
 
     m_list_callback = [this]() {
+        if (m_items.empty()) {
+            App::Notify("No options available"_i18n);
+            return;
+        }
+
         App::Push<PopupList>(
             m_title, m_items, [this](auto op_idx){
                 if (op_idx) {
@@ -289,6 +299,16 @@ SidebarEntryArray::SidebarEntryArray(const std::string& title, const Items& item
 
 void SidebarEntryArray::Draw(NVGcontext* vg, Theme* theme, const Vec4& root_pos, bool left) {
     SidebarEntryBase::Draw(vg, theme, root_pos, left);
+
+    if (m_items.empty()) {
+        SidebarEntryBase::DrawEntry(vg, theme, m_title, "Unavailable"_i18n, false);
+        return;
+    }
+
+    if (m_index < 0 || static_cast<std::size_t>(m_index) >= m_items.size()) {
+        m_index = 0;
+    }
+
     SidebarEntryBase::DrawEntry(vg, theme, m_title, m_items[m_index], true);
 }
 

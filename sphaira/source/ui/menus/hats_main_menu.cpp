@@ -10,55 +10,32 @@
 
 #include "app.hpp"
 #include "app_version.hpp"
+#include "fs.hpp"
 #include "log.hpp"
 #include "hats_version.hpp"
 #include "i18n.hpp"
 
-#include "stb_image.h"
-
 namespace sphaira::ui::menu::hats {
 
-// Embedded icon data
-constexpr const u8 ICON_HATS_PACK[]{
-    #embed <icons/fetch-hats.png>
-};
-
-constexpr const u8 ICON_FIRMWARE[]{
-    #embed <icons/fetch-firmware.png>
-};
-
-constexpr const u8 ICON_CHEATS[]{
-    #embed <icons/cheats.png>
-};
-
-constexpr const u8 ICON_UNINSTALL[]{
-    #embed <icons/uninstall-components.png>
-};
-
-constexpr const u8 ICON_FILE_BROWSER[]{
-    #embed <icons/file-browser.png>
-};
-
-constexpr const u8 ICON_ADVANCED[]{
-    #embed <icons/advanced-options.png>
-};
+namespace {
+constexpr int ICON_WIDTH = 256;
+constexpr int ICON_HEIGHT = 256;
+constexpr std::size_t ICON_RGBA_SIZE = ICON_WIDTH * ICON_HEIGHT * 4;
+}
 
 MainMenu::MainMenu() : MenuBase{APP_NAME " v" HATS_TOOLS_VERSION, MenuFlag_None} {
     // Initialize menu items with icon paths
     m_items = {
-        {"Fetch HATS Pack", "Download and install HATS pack releases", "icons/fetch-hats.png"},
-        {"Fetch Firmware", "Download firmware for installation via Daybreak", "icons/fetch-firmware.png"},
-        {"Cheats", "Download cheat codes from nx-cheats-db", "icons/cheats.png"},
-        {"Uninstall Components", "Remove installed components (except Atmosphere/Hekate)", "icons/uninstall-components.png"},
-        {"File Browser", "Browse and manage files on SD Card", "icons/file-browser.png"},
-        {"Advanced Options", "Configure application settings including logging", "icons/advanced-options.png"}
+        {"Fetch HATS Pack", "Download and install HATS pack releases", "/config/mm-tools/icons/fetch-hats.rgba"},
+        {"Fetch Firmware", "Download firmware for installation via Daybreak", "/config/mm-tools/icons/fetch-firmware.rgba"},
+        {"Cheats", "Download cheat codes from nx-cheats-db", "/config/mm-tools/icons/cheats.rgba"},
+        {"Uninstall Components", "Remove installed components (except Atmosphere/Hekate)", "/config/mm-tools/icons/uninstall-components.rgba"},
+        {"File Browser", "Browse and manage files on SD Card", "/config/mm-tools/icons/file-browser.rgba"},
+        {"Advanced Options", "Configure application settings including logging", "/config/mm-tools/icons/advanced-options.rgba"}
     };
 
     // Refresh version info
     RefreshVersionInfo();
-
-    // Load icons
-    LoadIcons();
 
     // Set up actions
     this->SetActions(
@@ -109,6 +86,10 @@ void MainMenu::Update(Controller* controller, TouchInfo* touch) {
 
 void MainMenu::Draw(NVGcontext* vg, Theme* theme) {
     MenuBase::Draw(vg, theme);
+
+    if (!m_icons_loaded) {
+        LoadIcons();
+    }
 
     const float header_y = GetY() + 20.f;
     const float info_x = 80.f;
@@ -197,20 +178,24 @@ void MainMenu::LoadIcons() {
     auto* vg = App::GetVg();
     if (!vg) return;
 
-    // Helper lambda to load icon from embedded data
-    auto load_icon = [vg](const u8* data, size_t size, int& out_texture) -> bool {
-        int width, height, channels;
-        u8* decoded = stbi_load_from_memory(data, size, &width, &height, &channels, 4);
-        if (!decoded) {
-            log_write("Failed to load icon from memory\n");
+    // Load pre-decoded RGBA textures from SD to avoid PNG decoding and keep the NRO small.
+    auto load_icon = [vg](const char* path, int& out_texture) -> bool {
+        std::vector<u8> data;
+        fs::FsNativeSd fs;
+        const auto rc = fs.read_entire_file(path, data);
+        if (R_FAILED(rc)) {
+            log_write("Failed to read menu icon: %s (0x%X)\n", path, rc);
             return false;
         }
 
-        out_texture = nvgCreateImageRGBA(vg, width, height, 0, decoded);
-        stbi_image_free(decoded);
+        if (data.size() != ICON_RGBA_SIZE) {
+            log_write("Invalid menu icon size: %s (%zu bytes)\n", path, data.size());
+            return false;
+        }
 
+        out_texture = nvgCreateImageRGBA(vg, ICON_WIDTH, ICON_HEIGHT, 0, data.data());
         if (!out_texture) {
-            log_write("Failed to create NanoVG image texture\n");
+            log_write("Failed to create NanoVG image texture from RGBA icon: %s\n", path);
             return false;
         }
 
@@ -219,18 +204,16 @@ void MainMenu::LoadIcons() {
 
     // Load all icons
     bool success = true;
-    success &= load_icon(ICON_HATS_PACK, sizeof(ICON_HATS_PACK), m_items[0].icon_texture);
-    success &= load_icon(ICON_FIRMWARE, sizeof(ICON_FIRMWARE), m_items[1].icon_texture);
-    success &= load_icon(ICON_CHEATS, sizeof(ICON_CHEATS), m_items[2].icon_texture);
-    success &= load_icon(ICON_UNINSTALL, sizeof(ICON_UNINSTALL), m_items[3].icon_texture);
-    success &= load_icon(ICON_FILE_BROWSER, sizeof(ICON_FILE_BROWSER), m_items[4].icon_texture);
-    success &= load_icon(ICON_ADVANCED, sizeof(ICON_ADVANCED), m_items[5].icon_texture);
+    for (auto& item : m_items) {
+        success &= load_icon(item.icon_path, item.icon_texture);
+    }
 
     if (success) {
         log_write("Successfully loaded all menu icons\n");
     } else {
         log_write("Warning: Some icons failed to load\n");
     }
+    m_icons_loaded = true;
 }
 
 } // namespace sphaira::ui::menu::hats

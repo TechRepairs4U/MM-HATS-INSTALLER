@@ -58,6 +58,14 @@ struct ThemeData {
     std::string elements[ThemeEntryID_MAX]{};
 };
 
+constexpr const char* EXTERNAL_BACKGROUND_PATH = "/config/mm-tools/background.rgba";
+constexpr int BACKGROUND_WIDTH = 1280;
+constexpr int BACKGROUND_HEIGHT = 720;
+constexpr std::size_t BACKGROUND_RGBA_SIZE = BACKGROUND_WIDTH * BACKGROUND_HEIGHT * 4;
+constexpr int RAW_ICON_WIDTH = 256;
+constexpr int RAW_ICON_HEIGHT = 256;
+constexpr std::size_t RAW_ICON_RGBA_SIZE = RAW_ICON_WIDTH * RAW_ICON_HEIGHT * 4;
+
 struct ThemeIdPair {
     const char* label;
     ThemeEntryID id;
@@ -167,6 +175,33 @@ constexpr ThemeIdPair THEME_ENTRIES[] = {
     { "icon_zip", ThemeEntryID_ICON_ZIP, ElementType::Texture },
     { "icon_nro", ThemeEntryID_ICON_NRO, ElementType::Texture },
 };
+
+void ApplyBuiltInThemeDefaults(ThemeData& theme_data) {
+    theme_data.elements[ThemeEntryID_BACKGROUND] = EXTERNAL_BACKGROUND_PATH;
+    theme_data.elements[ThemeEntryID_GRID] = "0x122430";
+    theme_data.elements[ThemeEntryID_POPUP] = "0x143144";
+    theme_data.elements[ThemeEntryID_ERROR] = "0xfa3a5d";
+    theme_data.elements[ThemeEntryID_FOCUS] = "0x000000b4";
+    theme_data.elements[ThemeEntryID_LINE] = "0x335e77";
+    theme_data.elements[ThemeEntryID_LINE_SEPARATOR] = "0x163951";
+    theme_data.elements[ThemeEntryID_TEXT] = "0xffd700";
+    theme_data.elements[ThemeEntryID_TEXT_INFO] = "0xe6c15a";
+    theme_data.elements[ThemeEntryID_TEXT_SELECTED] = "0xffef9a";
+    theme_data.elements[ThemeEntryID_SELECTED_BACKGROUND] = "0x143144";
+    theme_data.elements[ThemeEntryID_SIDEBAR] = "0x071013ef";
+    theme_data.elements[ThemeEntryID_SCROLLBAR] = "0x32ffcf";
+    theme_data.elements[ThemeEntryID_PROGRESSBAR] = "0x32ffcf";
+    theme_data.elements[ThemeEntryID_PROGRESSBAR_BACKGROUND] = "0x0B1519";
+    theme_data.elements[ThemeEntryID_HIGHLIGHT_1] = "0x69ff8f";
+    theme_data.elements[ThemeEntryID_HIGHLIGHT_2] = "0x5cbeff";
+    theme_data.elements[ThemeEntryID_ICON_AUDIO] = "romfs:/theme/icon_audio.png";
+    theme_data.elements[ThemeEntryID_ICON_VIDEO] = "romfs:/theme/icon_video.png";
+    theme_data.elements[ThemeEntryID_ICON_IMAGE] = "romfs:/theme/icon_image.png";
+    theme_data.elements[ThemeEntryID_ICON_FILE] = "romfs:/theme/icon_file.png";
+    theme_data.elements[ThemeEntryID_ICON_FOLDER] = "romfs:/theme/icon_folder.png";
+    theme_data.elements[ThemeEntryID_ICON_ZIP] = "romfs:/theme/icon_zip.png";
+    theme_data.elements[ThemeEntryID_ICON_NRO] = "romfs:/theme/icon_nro.png";
+}
 
 constinit App* g_app{};
 
@@ -400,6 +435,16 @@ auto LoadThemeMeta(const fs::FsPath& path, ThemeMeta& meta) -> bool {
     log_write("loaded meta from: %s\n", path.s);
     meta.ini_path = path;
     return true;
+}
+
+auto MakeBuiltInThemeMeta() -> ThemeMeta {
+    ThemeMeta meta{};
+    meta.name = "Built-in Default";
+    meta.author = APP_NAME;
+    meta.version = APP_DISPLAY_VERSION;
+    meta.inherit = "none";
+    meta.ini_path = App::DEFAULT_THEME_PATH;
+    return meta;
 }
 
 void LoadThemeInternal(ThemeMeta meta, ThemeData& theme_data, int inherit_level = 0) {
@@ -663,7 +708,20 @@ auto App::GetThemeMetaList() -> std::span<ThemeMeta> {
 }
 
 void App::SetTheme(s64 theme_index) {
+    if (g_app->m_theme_meta_entries.empty()) {
+        g_app->ScanThemeEntries();
+    }
+
+    if (g_app->m_theme_meta_entries.empty()) {
+        return;
+    }
+
+    if (theme_index < 0 || static_cast<std::size_t>(theme_index) >= g_app->m_theme_meta_entries.size()) {
+        theme_index = 0;
+    }
+
     g_app->LoadTheme(g_app->m_theme_meta_entries[theme_index]);
+    g_app->m_theme_path.Set(g_app->m_theme_meta_entries[theme_index].ini_path.s);
     g_app->m_theme_index = theme_index;
 }
 
@@ -1126,7 +1184,35 @@ void DrawElement(const Vec4& v, ThemeEntryID id) {
 auto App::LoadElementImage(std::string_view value) -> ElementEntry {
     ElementEntry entry{};
 
-    entry.texture = nvgCreateImage(vg, value.data(), 0);
+    const std::string path{value};
+
+    if (value.ends_with(".rgba")) {
+        std::vector<u8> data;
+        fs::FsNativeSd fs;
+        const auto rc = fs.read_entire_file(path, data);
+        if (R_FAILED(rc)) {
+            log_write("failed to read raw RGBA texture: %s (0x%X)\n", path.c_str(), rc);
+            return entry;
+        }
+
+        int width{};
+        int height{};
+        if (data.size() == BACKGROUND_RGBA_SIZE) {
+            width = BACKGROUND_WIDTH;
+            height = BACKGROUND_HEIGHT;
+        } else if (data.size() == RAW_ICON_RGBA_SIZE) {
+            width = RAW_ICON_WIDTH;
+            height = RAW_ICON_HEIGHT;
+        } else {
+            log_write("invalid raw RGBA texture size: %s (%zu bytes)\n", path.c_str(), data.size());
+            return entry;
+        }
+
+        entry.texture = nvgCreateImageRGBA(vg, width, height, 0, data.data());
+    } else {
+        entry.texture = nvgCreateImage(vg, path.c_str(), 0);
+    }
+
     if (entry.texture) {
         entry.type = ElementType::Texture;
     }
@@ -1203,21 +1289,24 @@ void App::LoadTheme(const ThemeMeta& meta) {
 
     ThemeData theme_data{};
     theme_data.music_path = m_default_music.Get();
+    ApplyBuiltInThemeDefaults(theme_data);
     LoadThemeInternal(meta, theme_data);
     m_theme.meta = meta;
 
-    if (R_SUCCEEDED(romfsInit())) {
-        ON_SCOPE_EXIT(romfsExit());
-
-        // load all assets / colours.
-        for (auto& e : THEME_ENTRIES) {
-            m_theme.elements[e.id] = LoadElement(theme_data.elements[e.id], e.type);
-        }
-
-        // load music
-        m_theme.music_path = theme_data.music_path;
-        LoadAndPlayThemeMusic();
+    // Load colours even when RomFS is unavailable. Forwarders can fail to expose
+    // RomFS, but the app still needs a usable built-in theme for text and lines.
+    for (auto& e : THEME_ENTRIES) {
+        m_theme.elements[e.id] = LoadElement(theme_data.elements[e.id], e.type);
     }
+
+    if (m_theme.elements[ThemeEntryID_BACKGROUND].type == ElementType::None) {
+        m_theme.elements[ThemeEntryID_BACKGROUND] = LoadElementColour("0x111f28");
+    } else {
+        m_theme.elements[ThemeEntryID_BACKGROUND].colour = nvgRGBA(0x11, 0x1F, 0x28, 0xFF);
+    }
+
+    m_theme.music_path = theme_data.music_path;
+    LoadAndPlayThemeMusic();
 }
 
 // todo: only use opendir on if romfs, otherwise use native fs
@@ -1253,6 +1342,8 @@ void App::ScanThemes(const std::string& path) {
 }
 
 void App::ScanThemeEntries() {
+    m_theme_meta_entries.clear();
+
     // load from romfs first
     if (R_SUCCEEDED(romfsInit())) {
         ScanThemes("romfs:/themes/");
@@ -1261,6 +1352,10 @@ void App::ScanThemeEntries() {
 
     // then load custom entries
     ScanThemes("/config/mm-tools/themes/");
+
+    if (m_theme_meta_entries.empty()) {
+        m_theme_meta_entries.emplace_back(MakeBuiltInThemeMeta());
+    }
 }
 
 void App::LoadAndPlayThemeMusic() {
@@ -1692,18 +1787,39 @@ App::App(const char* argv0) {
 
         this->renderer.emplace(s_width, s_height, this->device, this->queue, *this->pool_images, *this->pool_code, *this->pool_data);
         this->vg = nvgCreateDk(&*this->renderer, NVG_ANTIALIAS | NVG_STENCIL_STROKES);
+        if (!this->vg) {
+            log_write("[APP] failed to create NanoVG context\n");
+            diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_OutOfMemory));
+        }
     }
 
     // not sure if these are meant to be deleted or not...
     {
         SCOPED_TIMESTAMP("font init");
         PlFontData font_standard, font_extended, font_lang;
-        plGetSharedFontByType(&font_standard, PlSharedFontType_Standard);
-        plGetSharedFontByType(&font_extended, PlSharedFontType_NintendoExt);
+        const auto rc_standard = plGetSharedFontByType(&font_standard, PlSharedFontType_Standard);
+        const auto rc_extended = plGetSharedFontByType(&font_extended, PlSharedFontType_NintendoExt);
 
-        auto standard_font = nvgCreateFontMem(this->vg, "Standard", (unsigned char*)font_standard.address, font_standard.size, 0);
-        auto extended_font = nvgCreateFontMem(this->vg, "Extended", (unsigned char*)font_extended.address, font_extended.size, 0);
-        nvgAddFallbackFontId(this->vg, standard_font, extended_font);
+        auto standard_font = -1;
+        if (R_SUCCEEDED(rc_standard) && font_standard.address && font_standard.size) {
+            standard_font = nvgCreateFontMem(this->vg, "Standard", (unsigned char*)font_standard.address, font_standard.size, 0);
+            if (standard_font >= 0) {
+                nvgFontFaceId(this->vg, standard_font);
+            } else {
+                log_write("[APP] failed to register standard shared font\n");
+            }
+        } else {
+            log_write("[APP] failed to load standard shared font: 0x%X\n", rc_standard);
+        }
+
+        if (R_SUCCEEDED(rc_extended) && font_extended.address && font_extended.size) {
+            auto extended_font = nvgCreateFontMem(this->vg, "Extended", (unsigned char*)font_extended.address, font_extended.size, 0);
+            if (standard_font >= 0 && extended_font >= 0) {
+                nvgAddFallbackFontId(this->vg, standard_font, extended_font);
+            }
+        } else {
+            log_write("[APP] failed to load extended shared font: 0x%X\n", rc_extended);
+        }
 
         constexpr PlSharedFontType lang_font[] = {
             PlSharedFontType_ChineseSimplified,
@@ -1717,7 +1833,9 @@ App::App(const char* argv0) {
                 char name[32];
                 std::snprintf(name, sizeof(name), "Lang_%u", font_lang.type);
                 auto lang_font = nvgCreateFontMem(this->vg, name, (unsigned char*)font_lang.address, font_lang.size, 0);
-                nvgAddFallbackFontId(this->vg, standard_font, lang_font);
+                if (standard_font >= 0 && lang_font >= 0) {
+                    nvgAddFallbackFontId(this->vg, standard_font, lang_font);
+                }
             } else {
                 log_write("failed plGetSharedFontByType(%d)\n", type);
             }
@@ -1752,15 +1870,29 @@ App::App(const char* argv0) {
 
         // try and load previous theme, default to previous version otherwise.
         fs::FsPath theme_path = m_theme_path.Get();
-        ThemeMeta theme_meta;
-        if (R_SUCCEEDED(romfsInit())) {
+        ThemeMeta theme_meta = MakeBuiltInThemeMeta();
+        auto loaded_theme_meta = LoadThemeMeta(theme_path, theme_meta);
+        if (!loaded_theme_meta && R_SUCCEEDED(romfsInit())) {
             ON_SCOPE_EXIT(romfsExit());
-            if (!LoadThemeMeta(theme_path, theme_meta)) {
-                log_write("failed to load meta using default\n");
-                theme_path = DEFAULT_THEME_PATH;
-                LoadThemeMeta(theme_path, theme_meta);
+            log_write("failed to load meta using saved path, using default\n");
+            theme_path = DEFAULT_THEME_PATH;
+            loaded_theme_meta = LoadThemeMeta(theme_path, theme_meta);
+        }
+
+        if (!loaded_theme_meta) {
+            auto it = std::ranges::find_if(m_theme_meta_entries, [&](const auto& meta){
+                return meta.ini_path == theme_path;
+            });
+
+            if (it != m_theme_meta_entries.end()) {
+                theme_meta = *it;
+            } else if (!m_theme_meta_entries.empty()) {
+                theme_meta = m_theme_meta_entries.front();
+            } else {
+                theme_meta = MakeBuiltInThemeMeta();
             }
         }
+
         log_write("loading theme from: %s\n", theme_meta.ini_path.s);
         LoadTheme(theme_meta);
 

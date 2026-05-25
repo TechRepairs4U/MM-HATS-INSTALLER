@@ -10,7 +10,7 @@ namespace sphaira::ui::menu::hats {
 struct MainMenuItem {
     std::string label;
     std::string description;
-    const char* icon_path; // Path to embedded icon
+    const char* icon_path; // Path to external raw RGBA icon
     int icon_texture{};    // NanoVG texture handle
 };
 
@@ -42,6 +42,7 @@ private:
     std::string m_firmware_version;
     std::string m_atmosphere_version;
     bool m_is_erista{true};
+    bool m_icons_loaded{};
 };
 
 } // namespace sphaira::ui::menu::hats

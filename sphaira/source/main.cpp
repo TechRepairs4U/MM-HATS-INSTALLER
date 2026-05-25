@@ -17,6 +17,27 @@ int main(int argc, char** argv) {
 
 extern "C" {
 
+namespace {
+
+bool g_applet_locked{};
+bool g_socket_init{};
+bool g_pl_init{};
+bool g_nifm_init{};
+bool g_account_init{};
+bool g_set_init{};
+bool g_hidsys_init{};
+bool g_ncm_init{};
+
+void try_init(const char* name, Result rc, bool& flag) {
+    if (R_SUCCEEDED(rc)) {
+        flag = true;
+    } else {
+        log_write("[INIT] %s failed: 0x%X\n", name, rc);
+    }
+}
+
+} // namespace
+
 void userAppInit(void) {
     sphaira::App::SetBoostMode(true);
 
@@ -49,23 +70,14 @@ void userAppInit(void) {
 
     const auto socket_config = is_application ? socket_config_application : socket_config_applet;
 
-    Result rc;
-    if (R_FAILED(rc = appletLockExit()))
-        diagAbortWithResult(rc);
-    if (R_FAILED(rc = socketInitialize(&socket_config)))
-        diagAbortWithResult(rc);
-    if (R_FAILED(rc = plInitialize(PlServiceType_User)))
-        diagAbortWithResult(rc);
-    if (R_FAILED(rc = nifmInitialize(NifmServiceType_User)))
-        diagAbortWithResult(rc);
-    if (R_FAILED(rc = accountInitialize(is_application ? AccountServiceType_Application : AccountServiceType_System)))
-        diagAbortWithResult(rc);
-    if (R_FAILED(rc = setInitialize()))
-        diagAbortWithResult(rc);
-    if (R_FAILED(rc = hidsysInitialize()))
-        diagAbortWithResult(rc);
-    if (R_FAILED(rc = ncmInitialize()))
-        diagAbortWithResult(rc);
+    try_init("appletLockExit", appletLockExit(), g_applet_locked);
+    try_init("socketInitialize", socketInitialize(&socket_config), g_socket_init);
+    try_init("plInitialize", plInitialize(PlServiceType_User), g_pl_init);
+    try_init("nifmInitialize", nifmInitialize(NifmServiceType_User), g_nifm_init);
+    try_init("accountInitialize", accountInitialize(is_application ? AccountServiceType_Application : AccountServiceType_System), g_account_init);
+    try_init("setInitialize", setInitialize(), g_set_init);
+    try_init("hidsysInitialize", hidsysInitialize(), g_hidsys_init);
+    try_init("ncmInitialize", ncmInitialize(), g_ncm_init);
 
     // it doesn't matter if this fails.
     appletSetScreenShotPermission(AppletScreenShotPermission_Enable);
@@ -76,20 +88,20 @@ void userAppInit(void) {
 void userAppExit(void) {
     log_nxlink_exit();
 
-    ncmExit();
-    hidsysExit();
-    setExit();
-    accountExit();
-    nifmExit();
-    plExit();
-    socketExit();
+    if (g_ncm_init) ncmExit();
+    if (g_hidsys_init) hidsysExit();
+    if (g_set_init) setExit();
+    if (g_account_init) accountExit();
+    if (g_nifm_init) nifmExit();
+    if (g_pl_init) plExit();
+    if (g_socket_init) socketExit();
     // NOTE (DMC): prevents exfat corruption.
     if (auto fs = fsdevGetDeviceFileSystem("sdmc:")) {
         fsFsCommit(fs);
     }
 
     sphaira::App::SetBoostMode(false);
-    appletUnlockExit();
+    if (g_applet_locked) appletUnlockExit();
 }
 
 } // extern "C"

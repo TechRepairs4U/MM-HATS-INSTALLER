@@ -36,7 +36,7 @@ set(HATS_TOOLS_APP_NAME "MM HATS INSTALLER")
 set(HATS_TOOLS_VERSION "1.0.0")
 set(sphaira_VERSION ${HATS_TOOLS_VERSION})
 
-project(hats-tools
+project(mm-tools
     VERSION ${sphaira_VERSION}
     LANGUAGES C CXX
 )
@@ -70,7 +70,7 @@ else()
     set(sphaira_DISPLAY_VERSION "${HATS_TOOLS_VERSION}")
 endif()
 
-add_executable(hats-tools
+add_executable(mm-tools
     source/ui/menus/appstore.cpp
     source/ui/menus/file_viewer.cpp
     source/ui/menus/image_viewer.cpp
@@ -170,7 +170,7 @@ add_executable(hats-tools
     source/yati/nx/nxdumptool/save.c
 )
 
-target_compile_definitions(hats-tools PRIVATE
+target_compile_definitions(mm-tools PRIVATE
     -DAPP_NAME="${HATS_TOOLS_APP_NAME}"
     -DAPP_VERSION="${sphaira_VERSION}"
     -DAPP_DISPLAY_VERSION="${sphaira_DISPLAY_VERSION}"
@@ -179,7 +179,7 @@ target_compile_definitions(hats-tools PRIVATE
     -DZSTD_STATIC_LINKING_ONLY=1
 )
 
-target_compile_options(hats-tools PRIVATE
+target_compile_options(mm-tools PRIVATE
     -Wall
     -Wextra
 
@@ -297,12 +297,12 @@ if (ENABLE_NVJPG)
     set_target_properties(nvjpg PROPERTIES CXX_STANDARD 26)
 
     target_link_libraries(nvjpg PRIVATE nvjpg)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_NVJPG)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_NVJPG)
 endif()
 
 if (ENABLE_NSZ)
-    target_sources(hats-tools PRIVATE source/utils/nsz_dumper.cpp)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_NSZ)
+    target_sources(mm-tools PRIVATE source/utils/nsz_dumper.cpp)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_NSZ)
 endif()
 
 if (ENABLE_LIBUSBHSFS)
@@ -318,10 +318,10 @@ if (ENABLE_LIBUSBHSFS)
 
     FetchContent_MakeAvailable(libusbhsfs)
 
-    target_compile_definitions(hats-tools PRIVATE ENABLE_LIBUSBHSFS)
-    target_link_libraries(hats-tools PRIVATE libusbhsfs)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_LIBUSBHSFS)
+    target_link_libraries(mm-tools PRIVATE libusbhsfs)
 else()
-    target_sources(hats-tools PRIVATE source/ff16/ffunicode.c)
+    target_sources(mm-tools PRIVATE source/ff16/ffunicode.c)
 endif()
 
 if (ENABLE_LIBUSBDVD)
@@ -355,9 +355,9 @@ if (ENABLE_LIBUSBDVD)
     target_include_directories(libusbdvd PRIVATE ${libusbdvd_SOURCE_DIR}/source/fs/udf)
     target_include_directories(libusbdvd PUBLIC ${libusbdvd_SOURCE_DIR}/include)
 
-    target_compile_definitions(hats-tools PRIVATE ENABLE_LIBUSBDVD)
-    target_link_libraries(hats-tools PRIVATE libusbdvd)
-    target_sources(hats-tools PRIVATE source/usbdvd.cpp)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_LIBUSBDVD)
+    target_link_libraries(mm-tools PRIVATE libusbdvd)
+    target_sources(mm-tools PRIVATE source/usbdvd.cpp)
 endif()
 
 if (ENABLE_FTPSRV)
@@ -404,10 +404,10 @@ if (ENABLE_FTPSRV)
     target_link_libraries(ftpsrv_helper PUBLIC ftpsrv)
     target_include_directories(ftpsrv_helper PUBLIC ${ftpsrv_SOURCE_DIR}/src/platform)
 
-    target_compile_definitions(hats-tools PRIVATE ENABLE_FTPSRV)
-    target_link_libraries(hats-tools PRIVATE ftpsrv_helper)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_FTPSRV)
+    target_link_libraries(mm-tools PRIVATE ftpsrv_helper)
 
-    target_sources(hats-tools PRIVATE
+    target_sources(mm-tools PRIVATE
         source/ftpsrv_helper.cpp
         source/ui/menus/ftp_menu.cpp
     )
@@ -421,18 +421,18 @@ if (ENABLE_LIBHAZE)
     )
 
     FetchContent_MakeAvailable(libhaze)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_LIBHAZE)
-    target_link_libraries(hats-tools PRIVATE libhaze)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_LIBHAZE)
+    target_link_libraries(mm-tools PRIVATE libhaze)
 
-    target_sources(hats-tools PRIVATE
+    target_sources(mm-tools PRIVATE
         source/haze_helper.cpp
         source/ui/menus/mtp_menu.cpp
     )
 endif()
 
 if (ENABLE_DEVOPTAB_HTTP)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_DEVOPTAB_HTTP)
-    target_sources(hats-tools PRIVATE source/utils/devoptab_http.cpp)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_DEVOPTAB_HTTP)
+    target_sources(mm-tools PRIVATE source/utils/devoptab_http.cpp)
 endif()
 
 if (ENABLE_DEVOPTAB_NFS)
@@ -443,12 +443,12 @@ if (ENABLE_DEVOPTAB_NFS)
     )
 
     FetchContent_MakeAvailable(libnfs)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_DEVOPTAB_NFS)
-    target_link_libraries(hats-tools PRIVATE nfs)
-    target_sources(hats-tools PRIVATE source/utils/devoptab_nfs.cpp)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_DEVOPTAB_NFS)
+    target_link_libraries(mm-tools PRIVATE nfs)
+    target_sources(mm-tools PRIVATE source/utils/devoptab_nfs.cpp)
 
     # todo: fix this upstream as nfs should export these folders.
-    target_include_directories(hats-tools PRIVATE
+    target_include_directories(mm-tools PRIVATE
         ${libnfs_SOURCE_DIR}/include
         ${libnfs_SOURCE_DIR}/include/nfsc
         ${libnfs_SOURCE_DIR}/nfs
@@ -463,14 +463,14 @@ if (ENABLE_DEVOPTAB_SMB2)
     )
 
     FetchContent_MakeAvailable(libsmb2)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_DEVOPTAB_SMB2)
-    target_link_libraries(hats-tools PRIVATE smb2)
-    target_sources(hats-tools PRIVATE source/utils/devoptab_smb2.cpp)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_DEVOPTAB_SMB2)
+    target_link_libraries(mm-tools PRIVATE smb2)
+    target_sources(mm-tools PRIVATE source/utils/devoptab_smb2.cpp)
 endif()
 
 if (ENABLE_DEVOPTAB_FTP)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_DEVOPTAB_FTP)
-    target_sources(hats-tools PRIVATE source/utils/devoptab_ftp.cpp)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_DEVOPTAB_FTP)
+    target_sources(mm-tools PRIVATE source/utils/devoptab_ftp.cpp)
 endif()
 
 if (ENABLE_DEVOPTAB_SFTP)
@@ -491,16 +491,16 @@ if (ENABLE_DEVOPTAB_SFTP)
         )
 
         FetchContent_MakeAvailable(libssh2)
-        target_link_libraries(hats-tools PRIVATE libssh2::libssh2)
+        target_link_libraries(mm-tools PRIVATE libssh2::libssh2)
     else()
         include(FindPkgConfig)
         pkg_check_modules(LIBSSH2 libssh2 REQUIRED)
-        target_include_directories(hats-tools PRIVATE ${LIBSSH2_INCLUDE_DIRS})
-        target_link_libraries(hats-tools PRIVATE ${LIBSSH2_LIBRARIES})
+        target_include_directories(mm-tools PRIVATE ${LIBSSH2_INCLUDE_DIRS})
+        target_link_libraries(mm-tools PRIVATE ${LIBSSH2_LIBRARIES})
     endif()
 
-    target_compile_definitions(hats-tools PRIVATE ENABLE_DEVOPTAB_SFTP)
-    target_sources(hats-tools PRIVATE source/utils/devoptab_sftp.cpp)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_DEVOPTAB_SFTP)
+    target_sources(mm-tools PRIVATE source/utils/devoptab_sftp.cpp)
 endif()
 
 if (ENABLE_DEVOPTAB_WEBDAV)
@@ -514,9 +514,9 @@ if (ENABLE_DEVOPTAB_WEBDAV)
     )
 
     FetchContent_MakeAvailable(pugixml)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_DEVOPTAB_WEBDAV)
-    target_link_libraries(hats-tools PRIVATE pugixml)
-    target_sources(hats-tools PRIVATE source/utils/devoptab_webdav.cpp)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_DEVOPTAB_WEBDAV)
+    target_link_libraries(mm-tools PRIVATE pugixml)
+    target_sources(mm-tools PRIVATE source/utils/devoptab_webdav.cpp)
 endif()
 
 if (ENABLE_AUDIO_MP3)
@@ -527,20 +527,20 @@ if (ENABLE_AUDIO_MP3)
     )
 
     FetchContent_MakeAvailable(id3v2lib)
-    target_link_libraries(hats-tools PRIVATE id3v2lib)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_AUDIO_MP3)
+    target_link_libraries(mm-tools PRIVATE id3v2lib)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_AUDIO_MP3)
 endif()
 
 if (ENABLE_AUDIO_OGG)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_AUDIO_OGG)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_AUDIO_OGG)
 endif()
 
 if (ENABLE_AUDIO_WAV)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_AUDIO_WAV)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_AUDIO_WAV)
 endif()
 
 if (ENABLE_AUDIO_FLAC)
-    target_compile_definitions(hats-tools PRIVATE ENABLE_AUDIO_FLAC)
+    target_compile_definitions(mm-tools PRIVATE ENABLE_AUDIO_FLAC)
 endif()
 
 # ztsd
@@ -595,6 +595,182 @@ FetchContent_MakeAvailable(
     dr_libs
 )
 
+# The bundled nanovg renderer normally loads its deko3d shaders from RomFS at
+# startup. Some forwarders do not expose the NRO RomFS early enough, so embed
+# the same shader binaries as a fallback.
+target_compile_options(nanovg PRIVATE
+    --embed-dir=${CMAKE_SOURCE_DIR}/assets/embed
+)
+set_target_properties(nanovg PROPERTIES CXX_STANDARD 26)
+
+file(READ ${nanovg_SOURCE_DIR}/include/nanovg/framework/CShader.h NANOVG_CSHADER_H)
+string(FIND "${NANOVG_CSHADER_H}" "bool load(CMemPool& pool, const void* data, size_t size);" NANOVG_CSHADER_H_HAS_MEMORY_LOAD)
+if (NANOVG_CSHADER_H_HAS_MEMORY_LOAD EQUAL -1)
+    string(REPLACE
+        "#include \"CMemPool.h\""
+        "#include \"CMemPool.h\"\n#include <stddef.h>"
+        NANOVG_CSHADER_H
+        "${NANOVG_CSHADER_H}"
+    )
+    string(REPLACE
+        "    bool load(CMemPool& pool, const char* path);"
+        "    bool load(CMemPool& pool, const char* path);\n    bool load(CMemPool& pool, const void* data, size_t size);"
+        NANOVG_CSHADER_H
+        "${NANOVG_CSHADER_H}"
+    )
+    file(WRITE ${nanovg_SOURCE_DIR}/include/nanovg/framework/CShader.h "${NANOVG_CSHADER_H}")
+endif()
+
+file(READ ${nanovg_SOURCE_DIR}/source/framework/CShader.cpp NANOVG_CSHADER_CPP)
+string(FIND "${NANOVG_CSHADER_CPP}" "CShader::load(CMemPool& pool, const void* data, size_t size)" NANOVG_CSHADER_CPP_HAS_MEMORY_LOAD)
+if (NANOVG_CSHADER_CPP_HAS_MEMORY_LOAD EQUAL -1)
+    string(REPLACE
+        "#include \"CShader.h\""
+        "#include \"CShader.h\"\n#include <stdint.h>\n#include <string.h>"
+        NANOVG_CSHADER_CPP
+        "${NANOVG_CSHADER_CPP}"
+    )
+    string(REPLACE
+        "bool CShader::load(CMemPool& pool, const char* path)"
+        [=[
+bool CShader::load(CMemPool& pool, const void* data, size_t size)
+{
+    DkshHeader hdr;
+    void* ctrlmem;
+
+    m_codemem.destroy();
+
+    if (!data || size < sizeof(hdr))
+        return false;
+
+    const uint8_t* bytes = static_cast<const uint8_t*>(data);
+    memcpy(&hdr, bytes, sizeof(hdr));
+
+    if (hdr.control_sz > size || hdr.code_sz > size - hdr.control_sz)
+        return false;
+
+    ctrlmem = malloc(hdr.control_sz);
+    if (!ctrlmem)
+        return false;
+
+    memcpy(ctrlmem, bytes, hdr.control_sz);
+
+    m_codemem = pool.allocate(hdr.code_sz, DK_SHADER_CODE_ALIGNMENT);
+    if (!m_codemem)
+        goto _fail0;
+
+    memcpy(m_codemem.getCpuAddr(), bytes + hdr.control_sz, hdr.code_sz);
+
+    dk::ShaderMaker{m_codemem.getMemBlock(), m_codemem.getOffset()}
+        .setControl(ctrlmem)
+        .setProgramId(0)
+        .initialize(m_shader);
+
+    free(ctrlmem);
+    return true;
+
+_fail0:
+    free(ctrlmem);
+    return false;
+}
+
+bool CShader::load(CMemPool& pool, const char* path)
+]=]
+        NANOVG_CSHADER_CPP
+        "${NANOVG_CSHADER_CPP}"
+    )
+    file(WRITE ${nanovg_SOURCE_DIR}/source/framework/CShader.cpp "${NANOVG_CSHADER_CPP}")
+endif()
+
+file(READ ${nanovg_SOURCE_DIR}/source/dk_renderer.cpp NANOVG_DK_RENDERER_CPP)
+string(FIND "${NANOVG_DK_RENDERER_CPP}" "FillVshShader" NANOVG_DK_RENDERER_CPP_HAS_EMBEDDED_SHADERS)
+if (NANOVG_DK_RENDERER_CPP_HAS_EMBEDDED_SHADERS EQUAL -1)
+    string(REPLACE
+        [=[
+        constexpr std::array VertexBufferState = { DkVtxBufferState{sizeof(NVGvertex), 0}, };
+]=]
+        [=[
+        alignas(4) constexpr unsigned char FillVshShader[] = {
+#embed <shaders/fill_vsh.dksh>
+        };
+
+        alignas(4) constexpr unsigned char FillFshShader[] = {
+#embed <shaders/fill_fsh.dksh>
+        };
+
+        alignas(4) constexpr unsigned char FillAaFshShader[] = {
+#embed <shaders/fill_aa_fsh.dksh>
+        };
+
+        constexpr std::array VertexBufferState = { DkVtxBufferState{sizeof(NVGvertex), 0}, };
+]=]
+        NANOVG_DK_RENDERER_CPP
+        "${NANOVG_DK_RENDERER_CPP}"
+    )
+    string(REPLACE
+        [=[
+    int DkRenderer::Create(DKNVGcontext &ctx) {
+        if (R_FAILED(romfsInit())) {
+            return 0;
+        }
+
+        m_vertex_shader.load(m_code_mem_pool, "romfs:/shaders/fill_vsh.dksh");
+
+        /* Load the appropriate fragment shader depending on whether AA is enabled. */
+        if (ctx.flags & NVG_ANTIALIAS) {
+            m_fragment_shader.load(m_code_mem_pool, "romfs:/shaders/fill_aa_fsh.dksh");
+        } else {
+            m_fragment_shader.load(m_code_mem_pool, "romfs:/shaders/fill_fsh.dksh");
+        }
+
+        romfsExit();
+
+        /* Set the size of fragment uniforms. */
+        ctx.fragSize = FragmentUniformSize;
+        return 1;
+    }
+]=]
+        [=[
+    int DkRenderer::Create(DKNVGcontext &ctx) {
+        bool loaded = false;
+
+        if (R_SUCCEEDED(romfsInit())) {
+            const bool vertex_loaded = m_vertex_shader.load(m_code_mem_pool, "romfs:/shaders/fill_vsh.dksh");
+            bool fragment_loaded;
+
+            /* Load the appropriate fragment shader depending on whether AA is enabled. */
+            if (ctx.flags & NVG_ANTIALIAS) {
+                fragment_loaded = m_fragment_shader.load(m_code_mem_pool, "romfs:/shaders/fill_aa_fsh.dksh");
+            } else {
+                fragment_loaded = m_fragment_shader.load(m_code_mem_pool, "romfs:/shaders/fill_fsh.dksh");
+            }
+
+            loaded = vertex_loaded && fragment_loaded;
+            romfsExit();
+        }
+
+        if (!loaded) {
+            const bool vertex_loaded = m_vertex_shader.load(m_code_mem_pool, FillVshShader, sizeof(FillVshShader));
+            const unsigned char* fragment_shader = (ctx.flags & NVG_ANTIALIAS) ? FillAaFshShader : FillFshShader;
+            const size_t fragment_shader_size = (ctx.flags & NVG_ANTIALIAS) ? sizeof(FillAaFshShader) : sizeof(FillFshShader);
+            const bool fragment_loaded = m_fragment_shader.load(m_code_mem_pool, fragment_shader, fragment_shader_size);
+
+            if (!vertex_loaded || !fragment_loaded) {
+                return 0;
+            }
+        }
+
+        /* Set the size of fragment uniforms. */
+        ctx.fragSize = FragmentUniformSize;
+        return 1;
+    }
+]=]
+        NANOVG_DK_RENDERER_CPP
+        "${NANOVG_DK_RENDERER_CPP}"
+    )
+    file(WRITE ${nanovg_SOURCE_DIR}/source/dk_renderer.cpp "${NANOVG_DK_RENDERER_CPP}")
+endif()
+
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
 
@@ -623,14 +799,14 @@ add_library(fatfs
 
 target_include_directories(fatfs PUBLIC source/ff16)
 
-set_target_properties(hats-tools PROPERTIES
+set_target_properties(mm-tools PROPERTIES
     C_STANDARD 23
     C_EXTENSIONS ON
     CXX_STANDARD 26
     CXX_EXTENSIONS ON
 )
 
-target_link_libraries(hats-tools PRIVATE
+target_link_libraries(mm-tools PRIVATE
     libpulsar
     minIni
     nanovg
@@ -647,7 +823,7 @@ target_link_libraries(hats-tools PRIVATE
     ${mbedcrypto_lib}
 )
 
-target_include_directories(hats-tools PRIVATE
+target_include_directories(mm-tools PRIVATE
     include
     ${minizip_inc}
     ${mbedtls_inc}
@@ -660,7 +836,7 @@ configure_file(
     ${CMAKE_BINARY_DIR}/app_version.hpp
     @ONLY
 )
-target_include_directories(hats-tools PRIVATE ${CMAKE_BINARY_DIR})
+target_include_directories(mm-tools PRIVATE ${CMAKE_BINARY_DIR})
 
 # copy the romfs
 file(COPY ${CMAKE_SOURCE_DIR}/assets/romfs DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
@@ -669,10 +845,10 @@ file(COPY ${CMAKE_SOURCE_DIR}/assets/romfs DESTINATION ${CMAKE_CURRENT_BINARY_DI
 dkp_add_asset_target(sphaira_romfs ${CMAKE_CURRENT_BINARY_DIR}/romfs)
 
 # wait until hbl is built first as we need the exefs to embed
-add_dependencies(hats-tools hbl_nso hbl_npdm)
+add_dependencies(mm-tools hbl_nso hbl_npdm)
 
 # set the embed path for assets and hbl
-target_compile_options(hats-tools PRIVATE
+target_compile_options(mm-tools PRIVATE
     --embed-dir=${CMAKE_SOURCE_DIR}/assets/embed
     --embed-dir=${CMAKE_BINARY_DIR}/hbl
 )
@@ -688,24 +864,24 @@ dkp_install_assets(sphaira_romfs
 
 # create nacp
 nx_generate_nacp(
-    OUTPUT hats-tools.nacp
+    OUTPUT mm-tools.nacp
     NAME "${HATS_TOOLS_APP_NAME}"
     AUTHOR TechRepairs4U
     VERSION ${HATS_TOOLS_VERSION}
 )
 
 # create nro
-nx_create_nro(hats-tools
+nx_create_nro(mm-tools
     OUTPUT ${CMAKE_BINARY_DIR}/mm-tools.nro
     ICON ${CMAKE_SOURCE_DIR}/assets/icon.jpg
-    NACP hats-tools.nacp
+    NACP mm-tools.nacp
     ROMFS sphaira_romfs
 )
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/switch/mm-tools)
 
 add_custom_command(
-    TARGET hats-tools_nro POST_BUILD
+    TARGET mm-tools_nro POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_BINARY_DIR}/mm-tools.nro
         ${CMAKE_BINARY_DIR}/switch/mm-tools/mm-tools.nro

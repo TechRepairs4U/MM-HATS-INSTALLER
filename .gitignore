@@ -24,7 +24,9 @@ libs/tweeny
 
 compile_commands.json
 out
+out-lite/
 payload/output/
+assets/embed/icons-backup-before-safe-convert-*/
 
 usb_test/
 __pycache__
