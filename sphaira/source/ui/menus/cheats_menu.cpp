@@ -638,13 +638,6 @@ auto LookupBuildIdForCheats(u64 title_id, bool allow_nso_fallback = true) -> Bui
         return result;
     }
 
-    // If we're in application mode and both installed-content probes failed,
-    // the title entry is present but the actual game data is very likely gone.
-    if (allow_nso_fallback && App::IsApplication()) {
-        result.failure_reason = BuildIdFailureReason::GameNotFound;
-        return result;
-    }
-
     result.failure_reason = BuildIdFailureReason::ExactBuildIdUnavailable;
     return result;
 }
@@ -654,7 +647,7 @@ auto GetBuildIdFailureMessage(BuildIdFailureReason reason) -> std::string {
         case BuildIdFailureReason::ProdKeysMissing:
             return "prod.keys not found";
         case BuildIdFailureReason::GameNotFound:
-            return "No game found";
+            return "Unable to read game data";
         case BuildIdFailureReason::ExactBuildIdUnavailable:
             return "Unable to determine the exact Build ID.\n\n"
                    "For reliable cheat matching, launch the game first\n"
@@ -3954,14 +3947,10 @@ void CheatDownloadMenu::FetchCheatsFromNxDb() {
         return;
     }
 
-    if (lookup.failure_reason == BuildIdFailureReason::ProdKeysMissing ||
-        lookup.failure_reason == BuildIdFailureReason::GameNotFound) {
-        m_loading = false;
-        m_loaded = true;
-        m_error_message = GetBuildIdFailureMessage(lookup.failure_reason);
-        App::Notify(m_error_message);
-        m_should_close = true;
-        return;
+    if (lookup.failure_reason == BuildIdFailureReason::ProdKeysMissing) {
+        log_write("[Cheats] prod.keys missing, inspecting nx-cheats-db file directly for unambiguous Build ID\n");
+    } else if (lookup.failure_reason == BuildIdFailureReason::GameNotFound) {
+        log_write("[Cheats] installed game data was not readable, inspecting nx-cheats-db file directly\n");
     }
 
     // Refuse to guess from version maps. Inspect the cheats file directly

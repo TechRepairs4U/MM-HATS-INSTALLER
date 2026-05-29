@@ -95,11 +95,11 @@ void MainMenu::Draw(NVGcontext* vg, Theme* theme) {
     const float info_x = 80.f;
 
     // Draw version info header
-    gfx::drawTextArgs(vg, info_x, header_y, 20.f, NVG_ALIGN_LEFT | NVG_ALIGN_TOP,
+    gfx::drawTextArgsBold(vg, info_x, header_y, 22.f, NVG_ALIGN_LEFT | NVG_ALIGN_TOP,
         theme->GetColour(ThemeEntryID_TEXT_INFO),
         "HATS: %s", m_hats_version.c_str());
 
-    gfx::drawTextArgs(vg, info_x, header_y + 24.f, 18.f, NVG_ALIGN_LEFT | NVG_ALIGN_TOP,
+    gfx::drawTextArgsBold(vg, info_x, header_y + 26.f, 20.f, NVG_ALIGN_LEFT | NVG_ALIGN_TOP,
         theme->GetColour(ThemeEntryID_TEXT_INFO),
         "Firmware: %s | Atmosphere: %s",
         m_firmware_version.c_str(),

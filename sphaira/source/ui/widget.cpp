@@ -21,12 +21,8 @@ auto uiButton::Draw(NVGcontext* vg, Theme* theme) -> void {
     // enable to see button region
     // gfx::drawRect(vg, m_pos, gfx::Colour::RED);
 
-    nvgTextAlign(vg, NVG_ALIGN_RIGHT | NVG_ALIGN_TOP);
-    nvgFillColor(vg, theme->GetColour(ThemeEntryID_TEXT));
-    nvgFontSize(vg, 20);
-    nvgText(vg, m_hint_pos.x, m_hint_pos.y, m_action_str.c_str(), nullptr);
-    nvgFontSize(vg, 26);
-    nvgText(vg, m_button_pos.x, m_button_pos.y, m_button_str.c_str(), nullptr);
+    gfx::drawText(vg, m_hint_pos.x, m_hint_pos.y, 20.f, theme->GetColour(ThemeEntryID_TEXT), m_action_str.c_str(), NVG_ALIGN_RIGHT | NVG_ALIGN_TOP);
+    gfx::drawText(vg, m_button_pos.x, m_button_pos.y, 26.f, theme->GetColour(ThemeEntryID_TEXT), m_button_str.c_str(), NVG_ALIGN_RIGHT | NVG_ALIGN_TOP);
 }
 
 void Widget::Update(Controller* controller, TouchInfo* touch) {

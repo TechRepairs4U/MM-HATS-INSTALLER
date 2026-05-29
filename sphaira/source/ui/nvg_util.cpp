@@ -13,6 +13,19 @@ namespace {
 
 constexpr auto ALIGN_HOR = NVG_ALIGN_LEFT|NVG_ALIGN_CENTER|NVG_ALIGN_RIGHT;
 constexpr auto ALIGN_VER = NVG_ALIGN_TOP|NVG_ALIGN_MIDDLE|NVG_ALIGN_BOTTOM|NVG_ALIGN_BASELINE;
+constexpr float TEXT_SHADOW_OFFSET = 1.8f;
+constexpr u8 TEXT_SHADOW_ALPHA = 106;
+constexpr float TEXT_BOLD_OFFSET = 0.65f;
+constexpr std::array TEXT_SHADOW_OFFSETS = {
+    Vec2{-TEXT_SHADOW_OFFSET, 0.f},
+    Vec2{TEXT_SHADOW_OFFSET, 0.f},
+    Vec2{0.f, -TEXT_SHADOW_OFFSET},
+    Vec2{0.f, TEXT_SHADOW_OFFSET},
+    Vec2{-TEXT_SHADOW_OFFSET, -TEXT_SHADOW_OFFSET},
+    Vec2{TEXT_SHADOW_OFFSET, -TEXT_SHADOW_OFFSET},
+    Vec2{-TEXT_SHADOW_OFFSET, TEXT_SHADOW_OFFSET},
+    Vec2{TEXT_SHADOW_OFFSET, TEXT_SHADOW_OFFSET},
+};
 
 constexpr std::array buttons = {
     std::pair{Button::A, "\uE0E0"},
@@ -160,7 +173,22 @@ void drawRectOutlineInternal(NVGcontext* vg, const Theme* theme, float size, con
     nvgFill(vg);
 }
 
-void drawTextIntenal(NVGcontext* vg, const Vec2& v, float size, const char* str, const char* end, int align, const NVGcolor& c) {
+void drawTextPass(NVGcontext* vg, const Vec2& v, const char* str, const char* end, bool bold) {
+    nvgText(vg, v.x, v.y, str, end);
+    if (bold) {
+        nvgText(vg, v.x + TEXT_BOLD_OFFSET, v.y, str, end);
+        nvgText(vg, v.x - TEXT_BOLD_OFFSET, v.y, str, end);
+    }
+}
+
+void drawTextShadow(NVGcontext* vg, const Vec2& v, const char* str, const char* end, bool bold) {
+    nvgFillColor(vg, nvgRGBA(0, 0, 0, TEXT_SHADOW_ALPHA));
+    for (const auto& offset : TEXT_SHADOW_OFFSETS) {
+        drawTextPass(vg, v + offset, str, end, bold);
+    }
+}
+
+void drawTextIntenal(NVGcontext* vg, const Vec2& v, float size, const char* str, const char* end, int align, const NVGcolor& c, bool bold = false) {
     if (ClipText(v.x, v.y, align)) {
         return;
     }
@@ -168,8 +196,13 @@ void drawTextIntenal(NVGcontext* vg, const Vec2& v, float size, const char* str,
     nvgBeginPath(vg);
     nvgFontSize(vg, size);
     nvgTextAlign(vg, align);
+    drawTextShadow(vg, v, str, end, bold);
+
+    nvgBeginPath(vg);
+    nvgFontSize(vg, size);
+    nvgTextAlign(vg, align);
     nvgFillColor(vg, c);
-    nvgText(vg, v.x, v.y, str, end);
+    drawTextPass(vg, v, str, end, bold);
 }
 
 void drawTriangleInternal(NVGcontext* vg, float aX, float aY, float bX, float bY, float cX, float cY, const NVGcolor& c) {
@@ -210,6 +243,15 @@ void drawTextArgs(NVGcontext* vg, float x, float y, float size, int align, const
     drawText(vg, x, y, size, buffer, nullptr, align, c);
 }
 
+void drawTextArgsBold(NVGcontext* vg, float x, float y, float size, int align, const NVGcolor& c, const char* str, ...) {
+    std::va_list v;
+    va_start(v, str);
+    char buffer[0x100];
+    std::vsnprintf(buffer, sizeof(buffer), str, v);
+    va_end(v);
+    drawTextBold(vg, x, y, size, buffer, nullptr, align, c);
+}
+
 void drawImage(NVGcontext* vg, const Vec4& v, int texture, float rounded, float alpha) {
     const auto paint = nvgImagePattern(vg, v.x, v.y, v.w, v.h, 0, texture, alpha);
     drawRect(vg, v, paint, rounded);
@@ -222,6 +264,14 @@ void drawImage(NVGcontext* vg, float x, float y, float w, float h, int texture, 
 void drawTextBox(NVGcontext* vg, float x, float y, float size, float bound, const NVGcolor& c, const char* str, int align, const char* end) {
     if (ClipText(x, y, align)) {
         return;
+    }
+
+    nvgBeginPath(vg);
+    nvgFontSize(vg, size);
+    nvgTextAlign(vg, align);
+    nvgFillColor(vg, nvgRGBA(0, 0, 0, TEXT_SHADOW_ALPHA));
+    for (const auto& offset : TEXT_SHADOW_OFFSETS) {
+        nvgTextBox(vg, x + offset.x, y + offset.y, bound, str, end);
     }
 
     nvgBeginPath(vg);
@@ -288,6 +338,10 @@ void drawText(NVGcontext* vg, const Vec2& v, float size, const char* str, const 
 
 void drawText(NVGcontext* vg, const Vec2& v, float size, const NVGcolor& c, const char* str, int align, const char* end) {
     drawTextIntenal(vg, v, size, str, end, align, c);
+}
+
+void drawTextBold(NVGcontext* vg, float x, float y, float size, const char* str, const char* end, int align, const NVGcolor& c) {
+    drawTextIntenal(vg, {x,y}, size, str, end, align, c, true);
 }
 
 void drawScrollbar(NVGcontext* vg, const Theme* theme, float x, float y, float h, u32 index_off, u32 count, u32 max_per_page) {

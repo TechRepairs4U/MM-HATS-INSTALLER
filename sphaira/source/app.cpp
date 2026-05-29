@@ -184,9 +184,9 @@ void ApplyBuiltInThemeDefaults(ThemeData& theme_data) {
     theme_data.elements[ThemeEntryID_FOCUS] = "0x000000b4";
     theme_data.elements[ThemeEntryID_LINE] = "0x335e77";
     theme_data.elements[ThemeEntryID_LINE_SEPARATOR] = "0x163951";
-    theme_data.elements[ThemeEntryID_TEXT] = "0xffd700";
-    theme_data.elements[ThemeEntryID_TEXT_INFO] = "0xe6c15a";
-    theme_data.elements[ThemeEntryID_TEXT_SELECTED] = "0xffef9a";
+    theme_data.elements[ThemeEntryID_TEXT] = "0x39ff14";
+    theme_data.elements[ThemeEntryID_TEXT_INFO] = "0x39ff14";
+    theme_data.elements[ThemeEntryID_TEXT_SELECTED] = "0x39ff14";
     theme_data.elements[ThemeEntryID_SELECTED_BACKGROUND] = "0x143144";
     theme_data.elements[ThemeEntryID_SIDEBAR] = "0x071013ef";
     theme_data.elements[ThemeEntryID_SCROLLBAR] = "0x32ffcf";

@@ -17,6 +17,7 @@
 #include <yyjson.h>
 #include <cstring>
 #include <sstream>
+#include <utility>
 
 namespace sphaira::ui::menu::hats {
 
@@ -66,8 +67,21 @@ void from_json(yyjson_val* json, FirmwareEntry& e) {
 
 void from_json(const fs::FsPath& path, std::vector<FirmwareEntry>& entries) {
     JSON_INIT_VEC_FILE(path, nullptr, nullptr);
-    if (yyjson_is_arr(json)) {
-        JSON_ARR_ITR(entries);
+    if (!yyjson_is_arr(json)) {
+        return;
+    }
+
+    size_t idx, max;
+    yyjson_val* hit;
+    yyjson_arr_foreach(json, idx, max, hit) {
+        FirmwareEntry entry{};
+        from_json(hit, entry);
+
+        if (entry.tag_name.empty() || entry.asset_name.empty() || entry.download_url.empty()) {
+            continue;
+        }
+
+        entries.emplace_back(std::move(entry));
     }
 }
 
@@ -81,6 +95,10 @@ void from_json(yyjson_val* json, FuseEntry& e) {
 void from_json(const fs::FsPath& path, std::vector<FuseEntry>& entries) {
     JSON_INIT_VEC_FILE(path, nullptr, nullptr);
     // Get the "data" array from the JSON
+    if (!yyjson_is_obj(json)) {
+        return;
+    }
+
     auto data_val = yyjson_obj_get(json, "data");
     if (data_val && yyjson_is_arr(data_val)) {
         json = data_val;
@@ -312,7 +330,7 @@ void FirmwareMenu::Draw(NVGcontext* vg, Theme* theme) {
         }
 
         // Format date
-        std::string date = release.published_at.substr(0, 10);
+        std::string date = release.published_at.size() >= 10 ? release.published_at.substr(0, 10) : "Unknown";
 
         // Display name - typically the firmware version
         std::string display_name = release.name.empty() ? release.tag_name : release.name;
@@ -333,7 +351,7 @@ void FirmwareMenu::Draw(NVGcontext* vg, Theme* theme) {
             theme->GetColour(name_color),
             "[%s] %s", date.c_str(), display_name.c_str());
 
-        // Fuse count and size on the right
+        // Size on the right
         float right_x = x + w - text_xoffset;
         if (release.size > 0) {
             float size_mb = release.size / 1024.0f / 1024.0f;
@@ -341,20 +359,6 @@ void FirmwareMenu::Draw(NVGcontext* vg, Theme* theme) {
                 NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE,
                 theme->GetColour(ThemeEntryID_TEXT_INFO),
                 "%.1f MB", size_mb);
-        }
-
-        // Show fuse count if available, otherwise show ?
-        auto fuse_color = (is_downgrade) ? ThemeEntryID_ERROR : ThemeEntryID_TEXT_INFO;
-        if (release.fuse_count >= 0) {
-            gfx::drawTextArgs(vg, right_x - 100.f, y + h / 2.f, 16.f,
-                NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE,
-                theme->GetColour(fuse_color),
-                "Fuses: %d", release.fuse_count);
-        } else {
-            gfx::drawTextArgs(vg, right_x - 100.f, y + h / 2.f, 16.f,
-                NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE,
-                theme->GetColour(ThemeEntryID_TEXT_INFO),
-                "Fuses: ?");
         }
     });
 }
@@ -365,8 +369,6 @@ void FirmwareMenu::OnFocusGained() {
     if (!m_loaded && !m_loading) {
         FetchReleases();
     }
-    // Always try to fetch fuses (non-fatal if fails)
-    FetchFuses();
 }
 
 void FirmwareMenu::SetIndex(s64 index) {
@@ -378,15 +380,27 @@ void FirmwareMenu::SetIndex(s64 index) {
 }
 
 void FirmwareMenu::FetchReleases() {
+    if (m_loading) {
+        return;
+    }
+
     m_loading = true;
     m_error_message.clear();
     m_releases.clear();
+    UpdateSubheading();
 
     // Get firmware URL from config
     auto app = App::GetApp();
     const std::string firmware_url = app->m_firmware_url.Get();
 
-    curl::Api().ToFileAsync(
+    if (firmware_url.empty()) {
+        m_loading = false;
+        m_loaded = true;
+        m_error_message = "Firmware source is not configured.";
+        return;
+    }
+
+    const bool queued = curl::Api().ToFileAsync(
         curl::Url{firmware_url},
         curl::Path{RELEASES_CACHE},
         curl::Flags{curl::Flag_Cache},
@@ -415,12 +429,20 @@ void FirmwareMenu::FetchReleases() {
                 m_error_message = "No releases found.";
             } else {
                 log_write("firmware: loaded %zu releases\n", m_releases.size());
+                m_index = 0;
+                m_list->SetYoff(0);
                 SetIndex(0);
             }
 
             return true;
         }}
     );
+
+    if (!queued) {
+        m_loading = false;
+        m_loaded = true;
+        m_error_message = "Failed to start firmware release download.";
+    }
 }
 
 void FirmwareMenu::FetchFuses() {
@@ -482,6 +504,11 @@ void FirmwareMenu::DownloadFirmware() {
     }
 
     const auto& release = m_releases[m_index];
+    if (release.download_url.empty()) {
+        App::Push<ErrorBox>(0x1, "Firmware release has no download file.");
+        return;
+    }
+
     std::string display_name = release.name.empty() ? release.tag_name : release.name;
 
     bool is_downgrade = IsDowngrade(release.tag_name);
@@ -530,15 +557,6 @@ void FirmwareMenu::UpdateSubheading() {
 }
 
 bool FirmwareMenu::IsDowngrade(const std::string& target_version) {
-    // Use fuse-based comparison if available
-    if (m_current_fuse_count >= 0) {
-        int target_fuses = GetFuseCount(target_version);
-        if (target_fuses >= 0) {
-            // Downgrade if target requires fewer fuses than current
-            return target_fuses < m_current_fuse_count;
-        }
-    }
-    // Fallback to version comparison if fuse data not available
     return isVersionLower(target_version, m_current_firmware);
 }
 
