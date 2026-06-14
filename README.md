@@ -40,7 +40,7 @@ A red warning popup reminds you to backup your SD card before installation. This
 
 ### Windows Updater
 
-Make sure to use Hekate for the app so it will copying correctly. Note. " Apps like dbi, awoo or goldleaf cant be used it has to be hekate or SD Card Reader ONLY!!!
+Make sure to use Hekate for the app so it will copy correctly. Note. " Apps like dbi, awoo or goldleaf cant be used it has to be hekate or SD Card Reader ONLY!!!
 
 For Hekate goto Tools > USB Tools > SD Card and plug your usb from ur computer to ur switch and refresh the app and you should see the drive appear.
 
