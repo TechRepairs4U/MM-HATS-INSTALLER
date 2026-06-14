@@ -38,4 +38,10 @@ Before installing a HATS pack, the tool can automatically back up your existing 
 ### Backup Warning
 A red warning popup reminds you to backup your SD card before installation. This reminder can be disabled in Advanced Options if you prefer.
 
+### Windows Updater
+
+Make sure to use Hekate for the app so it will copying correctly. Note. " Apps like dbi, awoo or goldleaf cant be used it has to be hekate or SD Card Reader ONLY!!!
+
+For Hekate goto Tools > USB Tools > SD Card and plug your usb from ur computer to ur switch and refresh the app and you should see the drive appear.
+
 <a href="https://www.buymeacoffee.com/TechRepairs4u" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" ></a>
