@@ -1236,6 +1236,22 @@ auto ExtractNxDbBuildIds(const std::string& json_str) -> std::vector<std::string
     return build_ids;
 }
 
+auto ParseAllNxDbCheats(const std::string& json_str) -> std::vector<CheatEntry> {
+    std::vector<CheatEntry> cheats;
+    const auto build_ids = ExtractNxDbBuildIds(json_str);
+
+    for (const auto& build_id : build_ids) {
+        auto parsed = ParseNxDbCheats(json_str, build_id);
+        for (auto& cheat : parsed) {
+            cheats.push_back(std::move(cheat));
+        }
+    }
+
+    log_write("[Cheats] Parsed %zu cheats across %zu nx-cheats-db Build ID(s)\n",
+              cheats.size(), build_ids.size());
+    return cheats;
+}
+
 struct CachedCheatMetadata {
     u64 title_id{};
     std::string name;
@@ -2037,6 +2053,40 @@ auto WriteCheatFile(u64 title_id, const std::string& build_id, const std::vector
             return 1;
         }
         log_write("[Cheats] Wrote %zu cheats to %s\n", cheats.size(), file_path.s);
+    }
+
+    return 0;
+}
+
+auto WriteSelectedCheatFiles(u64 title_id, const std::vector<CheatEntry>& cheats) -> Result {
+    std::map<std::string, std::vector<CheatEntry>> cheats_by_build_id;
+
+    for (const auto& cheat : cheats) {
+        if (!cheat.selected) {
+            continue;
+        }
+
+        const auto build_id = NormalizeBuildId(cheat.build_id);
+        if (!IsValidBuildId(build_id)) {
+            log_write("[Cheats] Skipping selected cheat with invalid Build ID: %s\n", cheat.build_id.c_str());
+            continue;
+        }
+
+        auto copy = cheat;
+        copy.build_id = build_id;
+        cheats_by_build_id[build_id].push_back(std::move(copy));
+    }
+
+    if (cheats_by_build_id.empty()) {
+        log_write("[Cheats] No selected cheats had a valid Build ID\n");
+        return 1;
+    }
+
+    for (const auto& [build_id, build_cheats] : cheats_by_build_id) {
+        const auto rc = WriteCheatFile(title_id, build_id, build_cheats);
+        if (R_FAILED(rc)) {
+            return rc;
+        }
     }
 
     return 0;
@@ -3742,6 +3792,9 @@ void CheatDownloadMenu::Draw(NVGcontext* vg, Theme* theme) {
 
         // Cheat name (truncated)
         std::string name = cheat.name;
+        if (m_game.build_id.empty() && IsValidBuildId(cheat.build_id)) {
+            name = "[" + cheat.build_id + "] " + name;
+        }
         if (name.length() > 60) {
             name = name.substr(0, 57) + "...";
         }
@@ -4001,12 +4054,19 @@ void CheatDownloadMenu::FetchCheatsFileAndExtractBuildIds() {
                 return true;
             }
 
+            m_cheats = ParseAllNxDbCheats(content);
             m_loading = false;
             m_loaded = true;
-            log_write("[Cheats] Multiple candidate Build IDs found, refusing to guess\n");
+            m_index = m_cheats.empty() ? -1 : 0;
             m_error_message.clear();
-            App::Notify("No cheats found");
-            SetPop();
+
+            if (m_cheats.empty()) {
+                App::Notify("No cheats found");
+                SetPop();
+            } else {
+                CacheNxDbCheatFile(content);
+                App::Notify("Loaded cheats for multiple Build IDs");
+            }
             return true;
         }}
     );
@@ -4068,9 +4128,17 @@ void CheatDownloadMenu::FetchNxDbCheatsFromGithub(const std::string& build_id) {
 
             if (m_cheats.empty()) {
                 log_write("[Cheats] Build ID %s not found in cheats file\n", build_id.c_str());
-                m_error_message.clear();
-                App::Notify("No cheats found"_i18n);
-                SetPop();
+                m_cheats = ParseAllNxDbCheats(content);
+                if (m_cheats.empty()) {
+                    m_error_message.clear();
+                    App::Notify("No cheats found"_i18n);
+                    SetPop();
+                } else {
+                    m_index = 0;
+                    m_game.build_id.clear();
+                    CacheNxDbCheatFile(content);
+                    App::Notify("Loaded cheats for multiple Build IDs");
+                }
             } else {
                 m_index = 0; // Set to first item when cheats are found
                 log_write("[Cheats] Successfully fetched %zu cheats from nx-cheats-db\n", m_cheats.size());
@@ -4305,12 +4373,6 @@ void CheatDownloadMenu::FetchCheatsFromApi(const std::string& build_id) {
 }
 
 void CheatDownloadMenu::DownloadCheats() {
-    // Check if we have a valid build ID
-    if (m_game.build_id.empty()) {
-        App::Notify("No Build ID detected!");
-        return;
-    }
-
     // Check if cheats list is empty or still loading
     if (m_loading) {
         App::Notify("Still loading cheats, please wait...");
@@ -4324,12 +4386,24 @@ void CheatDownloadMenu::DownloadCheats() {
 
     // Count selected cheats
     size_t selected_count = 0;
+    std::set<std::string> selected_build_ids;
     for (const auto& cheat : m_cheats) {
-        if (cheat.selected) selected_count++;
+        if (cheat.selected) {
+            selected_count++;
+            const auto build_id = NormalizeBuildId(cheat.build_id);
+            if (IsValidBuildId(build_id)) {
+                selected_build_ids.insert(build_id);
+            }
+        }
     }
 
     if (selected_count == 0) {
         App::Notify("No cheats selected!");
+        return;
+    }
+
+    if (selected_build_ids.empty()) {
+        App::Notify("No valid Build ID for selected cheats!");
         return;
     }
 
@@ -4351,7 +4425,7 @@ void CheatDownloadMenu::DownloadCheats() {
                         }
                     }
 
-                    return WriteCheatFile(m_game.title_id, m_game.build_id, selected);
+                    return WriteSelectedCheatFiles(m_game.title_id, selected);
                 },
                 [this](Result rc) {
                     if (R_SUCCEEDED(rc)) {

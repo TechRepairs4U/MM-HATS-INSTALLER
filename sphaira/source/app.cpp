@@ -1578,29 +1578,45 @@ App::App(const char* argv0) {
         if (log_is_init()) {
             SCOPED_TIMESTAMP("fw log init");
             SetSysFirmwareVersion fw_version{};
-            setsysInitialize();
-            ON_SCOPE_EXIT(setsysExit());
-            setsysGetFirmwareVersion(&fw_version);
+            Result rc = setsysInitialize();
+            if (R_SUCCEEDED(rc)) {
+                ON_SCOPE_EXIT(setsysExit());
+                rc = setsysGetFirmwareVersion(&fw_version);
+                if (R_SUCCEEDED(rc)) {
+                    log_write("[version] platform: %s\n", fw_version.platform);
+                    log_write("[version] version_hash: %s\n", fw_version.version_hash);
+                    log_write("[version] display_version: %s\n", fw_version.display_version);
+                    log_write("[version] display_title: %s\n", fw_version.display_title);
+                } else {
+                    log_write("[version] setsysGetFirmwareVersion failed: 0x%X\n", rc);
+                }
+            } else {
+                log_write("[version] setsysInitialize failed: 0x%X\n", rc);
+            }
 
-            log_write("[version] platform: %s\n", fw_version.platform);
-            log_write("[version] version_hash: %s\n", fw_version.version_hash);
-            log_write("[version] display_version: %s\n", fw_version.display_version);
-            log_write("[version] display_title: %s\n", fw_version.display_title);
+            rc = splInitialize();
+            if (R_SUCCEEDED(rc)) {
+                ON_SCOPE_EXIT(splExit());
 
-            splInitialize();
-            ON_SCOPE_EXIT(splExit());
+                u64 out{};
+                if (R_SUCCEEDED(splGetConfig((SplConfigItem)65000, &out))) {
+                    log_write("[ams] version: %lu.%lu.%lu\n", (out >> 56) & 0xFF, (out >> 48) & 0xFF, (out >> 40) & 0xFF);
+                    log_write("[ams] target version: %lu.%lu.%lu\n", (out >> 24) & 0xFF, (out >> 16) & 0xFF, (out >> 8) & 0xFF);
+                    log_write("[ams] key gen: %lu\n", (out >> 32) & 0xFF);
+                } else {
+                    log_write("[ams] version config unavailable\n");
+                }
 
-            u64 out{};
-            splGetConfig((SplConfigItem)65000, &out);
-            log_write("[ams] version: %lu.%lu.%lu\n", (out >> 56) & 0xFF, (out >> 48) & 0xFF, (out >> 40) & 0xFF);
-            log_write("[ams] target version: %lu.%lu.%lu\n", (out >> 24) & 0xFF, (out >> 16) & 0xFF, (out >> 8) & 0xFF);
-            log_write("[ams] key gen: %lu\n", (out >> 32) & 0xFF);
+                if (R_SUCCEEDED(splGetConfig((SplConfigItem)65003, &out))) {
+                    log_write("[ams] hash: %lx\n", out);
+                }
 
-            splGetConfig((SplConfigItem)65003, &out);
-            log_write("[ams] hash: %lx\n", out);
-
-            splGetConfig((SplConfigItem)65010, &out);
-            log_write("[ams] usb 3.0 enabled: %lu\n", out);
+                if (R_SUCCEEDED(splGetConfig((SplConfigItem)65010, &out))) {
+                    log_write("[ams] usb 3.0 enabled: %lu\n", out);
+                }
+            } else {
+                log_write("[ams] splInitialize failed: 0x%X\n", rc);
+            }
         }
 
         // get emummc config.

@@ -10,7 +10,7 @@ PopupList::PopupList(const std::string& title, const Items& items, std::string& 
 : PopupList{title, items, Callback{}, index_ref}  {
 
     m_callback = [&index_str_ref, &index_ref, this](auto op_idx) {
-        if (op_idx) {
+        if (op_idx && *op_idx >= 0 && static_cast<std::size_t>(*op_idx) < m_items.size()) {
             index_ref = *op_idx;
             index_str_ref = m_items[index_ref];
         }
@@ -29,7 +29,7 @@ PopupList::PopupList(const std::string& title, const Items& items, std::string& 
     }
 
     m_callback = [&index_ref, this](auto op_idx) {
-        if (op_idx) {
+        if (op_idx && *op_idx >= 0 && static_cast<std::size_t>(*op_idx) < m_items.size()) {
             index_ref = m_items[*op_idx];
         }
     };
@@ -39,7 +39,7 @@ PopupList::PopupList(const std::string& title, const Items& items, s64& index_re
 : PopupList{title, items, Callback{}, index_ref}  {
 
     m_callback = [&index_ref, this](auto op_idx) {
-        if (op_idx) {
+        if (op_idx && *op_idx >= 0 && static_cast<std::size_t>(*op_idx) < m_items.size()) {
             index_ref = *op_idx;
         }
     };
@@ -62,6 +62,12 @@ PopupList::PopupList(const std::string& title, const Items& items, const Callbac
 , m_items{items}
 , m_callback{cb}
 , m_index{index} {
+    if (m_items.empty()) {
+        m_index = 0;
+    } else if (m_index < 0 || static_cast<std::size_t>(m_index) >= m_items.size()) {
+        m_index = 0;
+    }
+
     this->SetActions(
         std::make_pair(Button::A, Action{"Select"_i18n, [this](){
             if (m_callback) {
@@ -96,6 +102,11 @@ PopupList::PopupList(const std::string& title, const Items& items, const Callbac
 
 auto PopupList::Update(Controller* controller, TouchInfo* touch) -> void {
     Widget::Update(controller, touch);
+    if (m_items.empty()) {
+        SetPop();
+        return;
+    }
+
     m_list->OnUpdate(controller, touch, m_index, m_items.size(), [this](bool touch, auto i) {
         SetIndex(i);
         if (touch) {
@@ -105,6 +116,10 @@ auto PopupList::Update(Controller* controller, TouchInfo* touch) -> void {
 }
 
 auto PopupList::Draw(NVGcontext* vg, Theme* theme) -> void {
+    if (m_items.empty()) {
+        return;
+    }
+
     gfx::dimBackground(vg);
     gfx::drawRect(vg, m_pos, theme->GetColour(ThemeEntryID_POPUP));
     gfx::drawText(vg, m_pos + m_title_pos, 24.f, theme->GetColour(ThemeEntryID_TEXT), m_title.c_str());
@@ -148,7 +163,11 @@ auto PopupList::OnFocusLost() noexcept -> void {
 }
 
 void PopupList::SetIndex(s64 index) {
-    m_index = index;
+    if (m_items.empty()) {
+        m_index = 0;
+    } else {
+        m_index = std::clamp<s64>(index, 0, m_items.size() - 1);
+    }
 }
 
 } // namespace sphaira::ui

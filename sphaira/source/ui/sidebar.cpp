@@ -269,6 +269,11 @@ SidebarEntryArray::SidebarEntryArray(const std::string& title, const Items& item
 , m_items{items}
 , m_callback{cb}
 , m_index{index} {
+    if (m_items.empty()) {
+        m_index = 0;
+    } else if (m_index < 0 || static_cast<std::size_t>(m_index) >= m_items.size()) {
+        m_index = 0;
+    }
 
     m_list_callback = [this]() {
         if (m_items.empty()) {
@@ -279,8 +284,13 @@ SidebarEntryArray::SidebarEntryArray(const std::string& title, const Items& item
         App::Push<PopupList>(
             m_title, m_items, [this](auto op_idx){
                 if (op_idx) {
+                    if (*op_idx < 0 || static_cast<std::size_t>(*op_idx) >= m_items.size()) {
+                        return;
+                    }
                     m_index = *op_idx;
-                    m_callback(m_index);
+                    if (m_callback) {
+                        m_callback(m_index);
+                    }
                 }
             }, m_index
         );

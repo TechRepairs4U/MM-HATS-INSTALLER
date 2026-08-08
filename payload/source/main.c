@@ -34,7 +34,8 @@
 // Configuration
 #define STAGING_PATH      "sd:/config/mm-tools/hats-staging"
 #define PAYLOAD_PATH      "sd:/payload.bin"
-#define HEKATE_INI_BAK   "sd:/bootloader/hekate_ipl.ini.bak"
+#define HEKATE_INI_BAK   "sd:/config/mm-tools/hekate_ipl.ini.bak"
+#define HEKATE_INI_LEGACY_BAK "sd:/bootloader/hekate_ipl.ini.bak"
 #define HEKATE_INI       "sd:/bootloader/hekate_ipl.ini"
 #define CONFIG_PATH       "sd:/config/mm-tools/config.ini"
 #define ATMOSPHERE_PATH   "sd:/atmosphere"
@@ -223,13 +224,16 @@ static bool restore_hekate_ini(void) {
     u8 *buf;
 
     if (f_open(&fp_bak, HEKATE_INI_BAK, FA_READ) != FR_OK) {
-        return false;
+        if (f_open(&fp_bak, HEKATE_INI_LEGACY_BAK, FA_READ) != FR_OK) {
+            return false;
+        }
     }
 
     u32 bak_size = f_size(&fp_bak);
     if (bak_size == 0) {
         f_close(&fp_bak);
         f_unlink(HEKATE_INI_BAK);
+        f_unlink(HEKATE_INI_LEGACY_BAK);
         return false;
     }
 
@@ -245,6 +249,8 @@ static bool restore_hekate_ini(void) {
         return false;
     }
     f_close(&fp_bak);
+
+    f_mkdir("sd:/bootloader");
 
     // Overwrite hekate_ipl.ini with backup content
     bool success = false;
@@ -262,6 +268,7 @@ static bool restore_hekate_ini(void) {
     // Delete the backup file after successful restore
     if (success) {
         f_unlink(HEKATE_INI_BAK);
+        f_unlink(HEKATE_INI_LEGACY_BAK);
     }
 
     return success;
@@ -548,6 +555,13 @@ static void delete_existing_install_folders(void) {
     };
 
     for (u32 i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+        if (install_mode == MODE_REPLACE_AMS && i > 0) {
+            continue;
+        }
+        if (install_mode == MODE_REPLACE_AMS_BL && i > 1) {
+            continue;
+        }
+
         if (file_exists(paths[i])) {
             gfx_printf("  Deleting %s...\n", labels[i]);
             int res = folder_delete(paths[i]);
@@ -565,7 +579,7 @@ static void do_install(void) {
 
     // Step 1: Delete existing install folders before copying staging.
     set_color(COLOR_YELLOW);
-    gfx_printf("Step 1: Removing old install folders...\n");
+    gfx_printf("Step 1: Preparing install folders [%s]...\n", mode_names[install_mode]);
     set_color(COLOR_WHITE);
     delete_existing_install_folders();
 

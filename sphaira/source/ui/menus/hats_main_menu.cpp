@@ -1,12 +1,9 @@
 #include "ui/menus/hats_main_menu.hpp"
 #include "ui/menus/hats_pack_menu.hpp"
 #include "ui/menus/firmware_menu.hpp"
-#include "ui/menus/uninstaller_menu.hpp"
 #include "ui/menus/cheats_menu.hpp"
-#include "ui/menus/filebrowser.hpp"
 
 #include "ui/nvg_util.hpp"
-#include "ui/option_box.hpp"
 
 #include "app.hpp"
 #include "app_version.hpp"
@@ -28,10 +25,7 @@ MainMenu::MainMenu() : MenuBase{APP_NAME " v" HATS_TOOLS_VERSION, MenuFlag_None}
     m_items = {
         {"Fetch HATS Pack", "Download and install HATS pack releases", "/config/mm-tools/icons/fetch-hats.rgba"},
         {"Fetch Firmware", "Download firmware for installation via Daybreak", "/config/mm-tools/icons/fetch-firmware.rgba"},
-        {"Cheats", "Download cheat codes from nx-cheats-db", "/config/mm-tools/icons/cheats.rgba"},
-        {"Uninstall Components", "Remove installed components (except Atmosphere/Hekate)", "/config/mm-tools/icons/uninstall-components.rgba"},
-        {"File Browser", "Browse and manage files on SD Card", "/config/mm-tools/icons/file-browser.rgba"},
-        {"Advanced Options", "Configure application settings including logging", "/config/mm-tools/icons/advanced-options.rgba"}
+        {"Cheats", "Download cheat codes from nx-cheats-db", "/config/mm-tools/icons/cheats.rgba"}
     };
 
     // Refresh version info
@@ -48,13 +42,10 @@ MainMenu::MainMenu() : MenuBase{APP_NAME " v" HATS_TOOLS_VERSION, MenuFlag_None}
         std::make_pair(Button::START, Action{App::Exit})
     );
 
-    // Set up single row of icons (6 items in 1 row), centered horizontally and vertically
-    // Calculate total width: 6 icons * 174px + 5 gaps * 20px = 1144px
-    // Screen width: 1280px, so left margin: (1280 - 1144) / 2 = 68px
-    // Screen height: 720px, icon height: 174px, so top margin: (720 - 174) / 2 = 273px
+    // Set up single row of icons, centered horizontally and vertically.
     const Vec2 pad{20, 20};  // Padding between cells
-    const Vec4 v{68, 300.f, 174, 174};  // Centered both horizontally and vertically
-    m_list = std::make_unique<List>(6, 6, m_pos, v, pad);
+    const Vec4 v{359, 300.f, 174, 174};  // 3 icons * 174px + 2 gaps * 20px = 562px wide
+    m_list = std::make_unique<List>(3, 3, m_pos, v, pad);
     m_list->SetLayout(List::Layout::GRID);
 }
 
@@ -154,15 +145,6 @@ void MainMenu::OnSelect() {
             break;
         case 2: // Cheats
             App::Push<CheatsMenu>();
-            break;
-        case 3: // Uninstall Components
-            App::Push<UninstallerMenu>();
-            break;
-        case 4: // File Browser
-            App::Push<ui::menu::filebrowser::Menu>(MenuFlag_None);
-            break;
-        case 5: // Advanced Options
-            App::DisplayAdvancedOptions();
             break;
     }
 }

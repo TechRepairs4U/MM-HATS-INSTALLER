@@ -66,7 +66,8 @@ std::string formatSizeNetwork(u64 size) {
 // Hekate IPL ini manipulation
 namespace {
     constexpr const char* HEKATE_INI_PATH = "/bootloader/hekate_ipl.ini";
-    constexpr const char* HEKATE_INI_BAK_PATH = "/bootloader/hekate_ipl.ini.bak";
+    constexpr const char* HEKATE_INI_BAK_PATH = "/config/mm-tools/hekate_ipl.ini.bak";
+    constexpr const char* HEKATE_INI_LEGACY_BAK_PATH = "/bootloader/hekate_ipl.ini.bak";
     constexpr const char* HEKATE_INI_MOD_PATH = "/config/mm-tools/hekate_ipl_mod.ini";
     constexpr const char* HEKATE_INI_MOD_ROMFS = "romfs:/hekate_ipl_mod.ini";
 
@@ -99,14 +100,26 @@ namespace {
             }
             size_t read = fread(buffer, 1, to_read, src);
             if (read == 0) break;
-            fwrite(buffer, 1, read, dst);
+            if (fwrite(buffer, 1, read, dst) != read) {
+                log_write("copyFile: short write while copying to: %s\n", dst_path);
+                fclose(src);
+                fclose(dst);
+                return false;
+            }
             total_copied += read;
+        }
+
+        if (total_copied != (size_t)size) {
+            log_write("copyFile: short read while copying from: %s (%zu/%ld bytes)\n", src_path, total_copied, size);
+            fclose(src);
+            fclose(dst);
+            return false;
         }
 
         fclose(src);
         fflush(dst);
-        fsdevCommitDevice("sdmc");
         fclose(dst);
+        fsdevCommitDevice("sdmc");
 
         log_write("copyFile: copied %s -> %s (%zu bytes)\n", src_path, dst_path, total_copied);
         return true;
@@ -125,8 +138,18 @@ namespace {
         // Extract from romfs to SD card
         log_write("ensureHekateModIniExists: extracting %s to %s\n", HEKATE_INI_MOD_ROMFS, HEKATE_INI_MOD_PATH);
 
-        // Create directory if needed
-        fs::CreateDirectoryRecursively(HEKATE_INI_MOD_PATH);
+        fs::FsNativeSd fs;
+        if (fs.DirExists(HEKATE_INI_MOD_PATH)) {
+            log_write("ensureHekateModIniExists: removing invalid directory at %s\n", HEKATE_INI_MOD_PATH);
+            if (R_FAILED(fs.DeleteDirectory(HEKATE_INI_MOD_PATH))) {
+                return false;
+            }
+        }
+
+        if (R_FAILED(fs.CreateDirectoryRecursivelyWithPath(HEKATE_INI_MOD_PATH))) {
+            log_write("ensureHekateModIniExists: failed to create parent directory for %s\n", HEKATE_INI_MOD_PATH);
+            return false;
+        }
 
         return copyFile(HEKATE_INI_MOD_ROMFS, HEKATE_INI_MOD_PATH);
     }
@@ -145,6 +168,9 @@ bool setHekateAutobootPayload(const char* payload_path) {
         log_write("setHekateAutobootPayload: failed to ensure modded ini exists\n");
         return false;
     }
+
+    fs::FsNativeSd fs;
+    fs.CreateDirectoryRecursivelyWithPath(HEKATE_INI_BAK_PATH);
 
     // Check if backup already exists
     bool backup_exists = false;
@@ -191,6 +217,7 @@ bool setHekateAutobootPayload(const char* payload_path) {
     }
 
     // Copy the pre-made modded ini to hekate_ipl.ini
+    fs.CreateDirectoryRecursivelyWithPath(HEKATE_INI_PATH);
     if (!copyFile(HEKATE_INI_MOD_PATH, HEKATE_INI_PATH)) {
         log_write("setHekateAutobootPayload: failed to copy modded ini\n");
         return false;
@@ -205,8 +232,11 @@ bool setHekateAutobootPayload(const char* payload_path) {
 bool restoreHekateIni() {
     FILE* f_bak = fopen(HEKATE_INI_BAK_PATH, "rb");
     if (!f_bak) {
-        log_write("restoreHekateIni: no backup found, nothing to restore\n");
-        return false;
+        f_bak = fopen(HEKATE_INI_LEGACY_BAK_PATH, "rb");
+        if (!f_bak) {
+            log_write("restoreHekateIni: no backup found, nothing to restore\n");
+            return false;
+        }
     }
 
     fseek(f_bak, 0, SEEK_END);
@@ -217,12 +247,16 @@ bool restoreHekateIni() {
         log_write("restoreHekateIni: backup is empty or invalid\n");
         fclose(f_bak);
         remove(HEKATE_INI_BAK_PATH);
+        remove(HEKATE_INI_LEGACY_BAK_PATH);
         return false;
     }
 
     std::vector<u8> backup_data(size);
     fread(backup_data.data(), 1, size, f_bak);
     fclose(f_bak);
+
+    fs::FsNativeSd fs;
+    fs.CreateDirectoryRecursivelyWithPath(HEKATE_INI_PATH);
 
     FILE* f_out = fopen(HEKATE_INI_PATH, "wb");
     if (!f_out) {
@@ -234,6 +268,7 @@ bool restoreHekateIni() {
     fclose(f_out);
 
     remove(HEKATE_INI_BAK_PATH);
+    remove(HEKATE_INI_LEGACY_BAK_PATH);
 
     fsdevCommitDevice("sdmc");
 
@@ -244,6 +279,11 @@ bool restoreHekateIni() {
 // Check if hekate_ipl.ini backup exists
 bool isHekateAutobootActive() {
     FILE* f = fopen(HEKATE_INI_BAK_PATH, "rb");
+    if (f) {
+        fclose(f);
+        return true;
+    }
+    f = fopen(HEKATE_INI_LEGACY_BAK_PATH, "rb");
     if (f) {
         fclose(f);
         return true;

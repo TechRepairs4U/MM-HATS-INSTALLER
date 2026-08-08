@@ -600,6 +600,7 @@ FetchContent_MakeAvailable(
 # the same shader binaries as a fallback.
 target_compile_options(nanovg PRIVATE
     --embed-dir=${CMAKE_SOURCE_DIR}/assets/embed
+    --embed-dir=${CMAKE_BINARY_DIR}/_deps/nanovg-build
 )
 set_target_properties(nanovg PROPERTIES CXX_STANDARD 26)
 
@@ -691,15 +692,15 @@ if (NANOVG_DK_RENDERER_CPP_HAS_EMBEDDED_SHADERS EQUAL -1)
 ]=]
         [=[
         alignas(4) constexpr unsigned char FillVshShader[] = {
-#embed <shaders/fill_vsh.dksh>
+#embed <fill_vsh.dksh>
         };
 
         alignas(4) constexpr unsigned char FillFshShader[] = {
-#embed <shaders/fill_fsh.dksh>
+#embed <fill_fsh.dksh>
         };
 
         alignas(4) constexpr unsigned char FillAaFshShader[] = {
-#embed <shaders/fill_aa_fsh.dksh>
+#embed <fill_aa_fsh.dksh>
         };
 
         constexpr std::array VertexBufferState = { DkVtxBufferState{sizeof(NVGvertex), 0}, };

@@ -345,6 +345,22 @@ auto DownloadAndExtract(ProgressBox* pbox, const ReleaseEntry& release) -> Resul
     return 0;
 }
 
+void RebootToHekate() {
+    Result rc = spsmInitialize();
+    if (R_FAILED(rc)) {
+        hats_log_write("hats: failed to initialize spsm: 0x%X\n", rc);
+        App::Push<ErrorBox>(rc, "Failed to initialize reboot service");
+        return;
+    }
+
+    rc = spsmShutdown(true);
+    if (R_FAILED(rc)) {
+        spsmExit();
+        hats_log_write("hats: failed to reboot to hekate: 0x%X\n", rc);
+        App::Push<ErrorBox>(rc, "Failed to reboot to hekate");
+    }
+}
+
 } // namespace
 
 PackMenu::PackMenu() : MenuBase{"HATS Pack Releases", MenuFlag_None} {
@@ -709,9 +725,7 @@ void PackMenu::ShowLaunchDialog() {
                     // Configuration successful, now reboot
                     hats_log_write("hats: launching HATS installer (rebooting to hekate...)\n");
 
-                    spsmInitialize();
-                    spsmShutdown(true);
-                    // Should not reach here
+                    RebootToHekate();
                 }
             );
         }
@@ -1046,8 +1060,7 @@ void CacheManagerMenu::ReinstallFromCache() {
                                             return;
                                         }
 
-                                        spsmInitialize();
-                                        spsmShutdown(true);
+                                        RebootToHekate();
                                     }
                                 );
                             }

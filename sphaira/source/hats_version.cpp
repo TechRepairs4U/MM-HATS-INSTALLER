@@ -10,23 +10,12 @@ namespace sphaira::hats {
 
 namespace {
 
-bool isPost019() {
-    u64 version;
-    if (R_SUCCEEDED(splGetConfig((SplConfigItem)65000, &version))) {
-        if (((version >> 56) & ((1 << 8) - 1)) > 0 || ((version >> 48) & ((1 << 8) - 1)) >= 19) {
-            return true;
-        }
+bool readAtmosphereConfig(SplConfigItem item, u64* out) {
+    if (R_FAILED(splInitialize())) {
+        return false;
     }
-    return false;
-}
-
-Result smAtmosphereHasService(bool* out, SmServiceName name, bool v019) {
-    u8 tmp = 0;
-    Result rc = v019 ? tipcDispatchInOut(smGetServiceSessionTipc(), 65100, name, tmp)
-                     : serviceDispatchInOut(smGetServiceSession(), 65100, name, tmp);
-    if (R_SUCCEEDED(rc) && out)
-        *out = tmp;
-    return rc;
+    ON_SCOPE_EXIT(splExit());
+    return R_SUCCEEDED(splGetConfig(item, out));
 }
 
 } // namespace
@@ -101,23 +90,17 @@ std::string getAtmosphereVersion() {
     u64 version;
     std::string res = "Unknown";
 
-    // Initialize spl service
-    if (R_FAILED(splInitialize())) {
-        return res;
-    }
-
-    if (R_SUCCEEDED(splGetConfig((SplConfigItem)65000, &version))) {
+    if (readAtmosphereConfig((SplConfigItem)65000, &version)) {
         res = std::to_string((version >> 56) & ((1 << 8) - 1)) + "." +
               std::to_string((version >> 48) & ((1 << 8) - 1)) + "." +
               std::to_string((version >> 40) & ((1 << 8) - 1));
 
         u64 emummc;
-        if (R_SUCCEEDED(splGetConfig((SplConfigItem)65007, &emummc))) {
+        if (readAtmosphereConfig((SplConfigItem)65007, &emummc)) {
             res += emummc ? "|E" : "|S";
         }
     }
 
-    splExit();
     return res;
 }
 
@@ -129,17 +112,8 @@ std::string getAmsInfo() {
 }
 
 bool isAtmosphere() {
-    bool res = false;
-    bool v019 = isPost019();
-
-    // Try AMS-specific service check
-    if (R_SUCCEEDED(smAtmosphereHasService(&res, smEncodeName("ams"), v019))) {
-        return res;
-    }
-
-    // Fallback: check if we can query AMS version
     u64 version;
-    return R_SUCCEEDED(splGetConfig((SplConfigItem)65000, &version));
+    return readAtmosphereConfig((SplConfigItem)65000, &version);
 }
 
 bool isErista() {
