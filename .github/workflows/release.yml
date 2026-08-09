@@ -33,7 +33,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: MM HATS INSTALLER ${{ github.ref_name }}
-          generate_release_notes: true
           files: |
             out/MM-HATS-INSTALLER-*.zip
             build/Release/mm-tools.nro
