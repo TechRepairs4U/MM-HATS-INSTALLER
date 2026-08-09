@@ -1,4 +1,4 @@
-# MM HATS INSTALLER v2.0
+# MM HATS INSTALLER v2.1
 
 <p align="center">
   <img src="images/preview.jpg" width="65%" />
