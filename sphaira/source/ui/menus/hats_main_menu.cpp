@@ -369,8 +369,13 @@ void MainMenu::StartUpdate() {
             if (update_is_nsp) {
                 pbox->NewTransfer("Installing MM HATS INSTALLER " + update_version);
                 // Use the existing full NSP installer so the title, control
-                // metadata, and content are registered by the system.
-                R_TRY(yati::InstallFromFile(pbox, &fs, nsp_path));
+                // metadata, and content are registered by the system. The
+                // local hacBrewPack output has a non-retail fixed header
+                // signature, so skip only that signature check; NCA content
+                // and install validation remain enabled.
+                yati::ConfigOverride install_override{};
+                install_override.skip_rsa_header_fixed_key_verify = true;
+                R_TRY(yati::InstallFromFile(pbox, &fs, nsp_path, install_override));
                 R_SUCCEED();
             }
 
