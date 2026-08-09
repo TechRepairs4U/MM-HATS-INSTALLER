@@ -2,15 +2,20 @@
 #include "ui/menus/hats_pack_menu.hpp"
 #include "ui/menus/firmware_menu.hpp"
 #include "ui/menus/cheats_menu.hpp"
+#include "ui/option_box.hpp"
 
 #include "ui/nvg_util.hpp"
 
 #include "app.hpp"
 #include "app_version.hpp"
+#include "download.hpp"
 #include "fs.hpp"
 #include "log.hpp"
+#include "nro.hpp"
 #include "hats_version.hpp"
 #include "i18n.hpp"
+
+#include <yyjson.h>
 
 namespace sphaira::ui::menu::hats {
 
@@ -18,6 +23,16 @@ namespace {
 constexpr int ICON_WIDTH = 256;
 constexpr int ICON_HEIGHT = 256;
 constexpr std::size_t ICON_RGBA_SIZE = ICON_WIDTH * ICON_HEIGHT * 4;
+constexpr const char* UPDATE_REPOSITORY = "TechRepairs4U/MM-HATS-INSTALLER";
+constexpr const char* UPDATE_RELEASES_URL = "https://api.github.com/repos/TechRepairs4U/MM-HATS-INSTALLER/releases/latest";
+constexpr const char* UPDATER_PATH = "/switch/mm-updater/mm-updater.nro";
+
+auto NormaliseVersionTag(std::string version) -> std::string {
+    if (version.starts_with('v') || version.starts_with('V')) {
+        version.erase(0, 1);
+    }
+    return version;
+}
 }
 
 MainMenu::MainMenu() : MenuBase{APP_NAME " v" HATS_TOOLS_VERSION, MenuFlag_None} {
@@ -125,6 +140,7 @@ void MainMenu::Draw(NVGcontext* vg, Theme* theme) {
 void MainMenu::OnFocusGained() {
     MenuBase::OnFocusGained();
     RefreshVersionInfo();
+    CheckForUpdates();
 }
 
 void MainMenu::SetIndex(s64 index) {
@@ -196,6 +212,101 @@ void MainMenu::LoadIcons() {
         log_write("Warning: Some icons failed to load\n");
     }
     m_icons_loaded = true;
+}
+
+void MainMenu::CheckForUpdates() {
+    if (m_update_check_started) {
+        return;
+    }
+
+    m_update_check_started = true;
+
+    const bool queued = curl::Api().ToMemoryAsync(
+        curl::Url{UPDATE_RELEASES_URL},
+        curl::StopToken{GetToken()},
+        curl::Header{
+            {"Accept", "application/vnd.github+json"},
+            {"X-GitHub-Api-Version", "2022-11-28"},
+        },
+        curl::OnComplete{[this](auto& result) {
+            if (!result.success || result.data.empty()) {
+                log_write("update check failed for %s (HTTP %ld)\n", UPDATE_REPOSITORY, result.code);
+                return;
+            }
+
+            auto* document = yyjson_read(
+                reinterpret_cast<const char*>(result.data.data()),
+                result.data.size(),
+                YYJSON_READ_NOFLAG
+            );
+            if (!document) {
+                log_write("update check returned invalid JSON\n");
+                return;
+            }
+
+            auto* root = yyjson_doc_get_root(document);
+            auto* tag_value = root && yyjson_is_obj(root) ? yyjson_obj_get(root, "tag_name") : nullptr;
+            const char* tag = tag_value && yyjson_is_str(tag_value) ? yyjson_get_str(tag_value) : nullptr;
+            if (!tag || !*tag) {
+                yyjson_doc_free(document);
+                log_write("update check response did not contain a release tag\n");
+                return;
+            }
+
+            m_update_version = tag;
+            const auto latest_version = NormaliseVersionTag(m_update_version);
+            const bool is_newer = App::IsVersionNewer(APP_DISPLAY_VERSION, latest_version.c_str());
+            yyjson_doc_free(document);
+
+            if (!is_newer) {
+                log_write("update check: %s is current or older\n", m_update_version.c_str());
+                return;
+            }
+
+            log_write("update available: %s\n", m_update_version.c_str());
+            const bool updater_installed = fs::FsNativeSd().FileExists(UPDATER_PATH);
+            if (!updater_installed) {
+                App::Push<ui::OptionBox>(
+                    "Update " + m_update_version + " is available.\n"
+                    "Install the latest MM HATS INSTALLER package to add the updater.",
+                    "OK"_i18n
+                );
+                return;
+            }
+
+            App::Push<ui::OptionBox>(
+                "MM HATS INSTALLER " + m_update_version + " is available.\n"
+                "Start the updater now?",
+                "Later"_i18n,
+                "Update"_i18n,
+                1,
+                [this](auto index) {
+                    if (index && *index == 1) {
+                        LaunchUpdater();
+                    }
+                }
+            );
+        }}
+    );
+
+    if (!queued) {
+        log_write("failed to queue update check for %s\n", UPDATE_REPOSITORY);
+    }
+}
+
+void MainMenu::LaunchUpdater() {
+    if (!fs::FsNativeSd().FileExists(UPDATER_PATH)) {
+        App::Push<ui::OptionBox>(
+            "MM Updater was not found at " + std::string{UPDATER_PATH} + ".",
+            "OK"_i18n
+        );
+        return;
+    }
+
+    const auto rc = nro_launch(UPDATER_PATH);
+    if (R_FAILED(rc)) {
+        App::PushErrorBox(rc, "Failed to start MM Updater."_i18n);
+    }
 }
 
 } // namespace sphaira::ui::menu::hats

@@ -2,6 +2,7 @@
 
 # Get version from CMakeLists.txt
 VERSION=$(grep "set(HATS_TOOLS_VERSION" sphaira/CMakeLists.txt | sed 's/.*"\(.*\)".*/\1/')
+UPDATER_URL="https://github.com/TechRepairs4U/MM-UPDATER-SWITCH/releases/latest/download/mm-updater.nro"
 
 rm -rf build
 rm -rf build/release
@@ -39,10 +40,13 @@ echo "=== hats-installer.bin built successfully ==="
 
 # --- PACKAGE --- #
 mkdir -p out/switch/mm-tools/
+mkdir -p out/switch/mm-updater/
 mkdir -p out/config/mm-tools/
 mkdir -p out/config/mm-tools/icons/
 
 cp build/Release/mm-tools.nro out/switch/mm-tools/mm-tools.nro
+echo "=== Fetching MM Updater NRO ==="
+curl -fL "$UPDATER_URL" -o out/switch/mm-updater/mm-updater.nro || { echo "=== ERROR: MM Updater NRO could not be downloaded. ==="; exit 1; }
 cp payload/output/hats-installer.bin out/switch/mm-tools/hats-installer.bin
 cp assets/romfs/hekate_ipl_mod.ini out/config/mm-tools/hekate_ipl_mod.ini
 cp config.ini out/config/mm-tools/config.ini

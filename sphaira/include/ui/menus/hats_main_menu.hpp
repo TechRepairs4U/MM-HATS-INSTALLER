@@ -28,6 +28,8 @@ private:
     void OnSelect();
     void RefreshVersionInfo();
     void LoadIcons();
+    void CheckForUpdates();
+    void LaunchUpdater();
 
 private:
     std::vector<MainMenuItem> m_items;
@@ -41,8 +43,10 @@ private:
     std::string m_hats_version;
     std::string m_firmware_version;
     std::string m_atmosphere_version;
+    std::string m_update_version;
     bool m_is_erista{true};
     bool m_icons_loaded{};
+    bool m_update_check_started{};
 };
 
 } // namespace sphaira::ui::menu::hats

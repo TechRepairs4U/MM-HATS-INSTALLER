@@ -1,4 +1,4 @@
-# MM HATS INSTALLER
+# MM HATS INSTALLER v2.0
 
 <p align="center">
   <img src="images/preview.jpg" width="65%" />
@@ -19,6 +19,10 @@ Custom HATS installer for Magic Monkei.
 3. The package includes the installer payload at `/switch/mm-tools/hats-installer.bin`.
 
 The app installs to `/switch/mm-tools/mm-tools.nro` and stores config/cache files under `/config/mm-tools`.
+
+MM HATS INSTALLER checks the latest release on GitHub when it starts. If a newer release is available, it prompts to launch `MM UPDATER SWITCH`, which downloads the published `mm-tools.nro` asset and safely replaces the installed app.
+
+The package includes the updater at `/switch/mm-updater/mm-updater.nro`.
 
 ## Features
 
