@@ -374,6 +374,7 @@ void MainMenu::StartUpdate() {
                 // signature, so skip only that signature check; NCA content
                 // and install validation remain enabled.
                 yati::ConfigOverride install_override{};
+                install_override.skip_if_already_installed = false;
                 install_override.skip_rsa_header_fixed_key_verify = true;
                 R_TRY(yati::InstallFromFile(pbox, &fs, nsp_path, install_override));
                 R_SUCCEED();
