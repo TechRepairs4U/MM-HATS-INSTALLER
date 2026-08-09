@@ -150,6 +150,13 @@ mkdir -p "${NSP_DIR}/exefs" "${NSP_DIR}/control" "${NSP_DIR}/romfs" "${OUTPUT_DI
 cp "$NACP" "${NSP_DIR}/control/control.nacp"
 cp -R "${ROMFS_DIR}/." "${NSP_DIR}/romfs/"
 
+# Keep the control metadata aligned with the NPDM and content-meta title ID.
+# This must be done for both old and new hacBrewPack versions; relying on the
+# packer alone can leave a zero or mismatched title ID in control.nacp, which
+# makes the installed application exit immediately on launch.
+"$NACPTOOL" --create "MM HATS INSTALLER" "TechRepairs4U" "$VERSION" \
+    "${NSP_DIR}/control/control.nacp" "--titleid=${TITLE_ID}"
+
 for language in \
     AmericanEnglish BritishEnglish Japanese French German LatinAmericanSpanish \
     Spanish Italian Dutch CanadianFrench Portuguese Russian Korean \
@@ -176,9 +183,7 @@ if grep -q -- '--titleid' <<< "$HACBREWPACK_HELP"; then
         --titlepublisher "TechRepairs4U"
     )
 else
-    echo "hacBrewPack has no --titleid override; writing the title ID into NACP before packaging."
-    "$NACPTOOL" --create "MM HATS INSTALLER" "TechRepairs4U" "$VERSION" \
-        "${NSP_DIR}/control/control.nacp" "--titleid=${TITLE_ID}"
+    echo "hacBrewPack has no --titleid override; using the explicit NACP title ID."
 fi
 (
     cd "$NSP_DIR"

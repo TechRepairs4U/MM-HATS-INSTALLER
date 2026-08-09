@@ -65,6 +65,8 @@ std::string formatSizeNetwork(u64 size) {
 
 // Hekate IPL ini manipulation
 namespace {
+    constexpr const char* HEKATE_DIR = "/bootloader";
+    constexpr const char* HEKATE_CONFIG_DIR = "/config/mm-tools";
     constexpr const char* HEKATE_INI_PATH = "/bootloader/hekate_ipl.ini";
     constexpr const char* HEKATE_INI_BAK_PATH = "/config/mm-tools/hekate_ipl.ini.bak";
     constexpr const char* HEKATE_INI_LEGACY_BAK_PATH = "/bootloader/hekate_ipl.ini.bak";
@@ -146,8 +148,8 @@ namespace {
             }
         }
 
-        if (R_FAILED(fs.CreateDirectoryRecursivelyWithPath(HEKATE_INI_MOD_PATH))) {
-            log_write("ensureHekateModIniExists: failed to create parent directory for %s\n", HEKATE_INI_MOD_PATH);
+        if (R_FAILED(fs.CreateDirectoryRecursively(HEKATE_CONFIG_DIR))) {
+            log_write("ensureHekateModIniExists: failed to create parent directory %s\n", HEKATE_CONFIG_DIR);
             return false;
         }
 
@@ -170,7 +172,10 @@ bool setHekateAutobootPayload(const char* payload_path) {
     }
 
     fs::FsNativeSd fs;
-    fs.CreateDirectoryRecursivelyWithPath(HEKATE_INI_BAK_PATH);
+    if (R_FAILED(fs.CreateDirectoryRecursively(HEKATE_CONFIG_DIR))) {
+        log_write("setHekateAutobootPayload: failed to create %s\n", HEKATE_CONFIG_DIR);
+        return false;
+    }
 
     // Check if backup already exists
     bool backup_exists = false;
@@ -217,7 +222,10 @@ bool setHekateAutobootPayload(const char* payload_path) {
     }
 
     // Copy the pre-made modded ini to hekate_ipl.ini
-    fs.CreateDirectoryRecursivelyWithPath(HEKATE_INI_PATH);
+    if (R_FAILED(fs.CreateDirectoryRecursively(HEKATE_DIR))) {
+        log_write("setHekateAutobootPayload: failed to create %s\n", HEKATE_DIR);
+        return false;
+    }
     if (!copyFile(HEKATE_INI_MOD_PATH, HEKATE_INI_PATH)) {
         log_write("setHekateAutobootPayload: failed to copy modded ini\n");
         return false;
@@ -256,7 +264,10 @@ bool restoreHekateIni() {
     fclose(f_bak);
 
     fs::FsNativeSd fs;
-    fs.CreateDirectoryRecursivelyWithPath(HEKATE_INI_PATH);
+    if (R_FAILED(fs.CreateDirectoryRecursively(HEKATE_DIR))) {
+        log_write("restoreHekateIni: failed to create %s\n", HEKATE_DIR);
+        return false;
+    }
 
     FILE* f_out = fopen(HEKATE_INI_PATH, "wb");
     if (!f_out) {

@@ -213,9 +213,10 @@ static int file_exists(const char *path) {
     return (f_stat(path, &fno) == FR_OK);
 }
 
-// Restore hekate_ipl.ini from backup (called after installation or on error)
-// Note: The backup and modification of hekate_ipl.ini is now handled by the NRO
-// when the user clicks "Launch". The payload only needs to restore it.
+// Restore hekate_ipl.ini from backup when an install cannot complete.
+// The NRO temporarily replaces hekate_ipl.ini so Hekate can launch this
+// payload. On a successful install, the HATS pack's own hekate_ipl.ini must
+// remain in place instead of being overwritten by this backup.
 static bool restore_hekate_ini(void) {
     FIL fp_bak;
     FIL fp_dst;
@@ -272,6 +273,15 @@ static bool restore_hekate_ini(void) {
     }
 
     return success;
+}
+
+// Remove the temporary autoboot backups after a successful install. This
+// deliberately does not touch the installed hekate_ipl.ini from the HATS
+// pack. folder_delete handles both normal files and any invalid backup
+// directories left by older builds.
+static void discard_hekate_ini_backups(void) {
+    folder_delete(HEKATE_INI_BAK);
+    folder_delete(HEKATE_INI_LEGACY_BAK);
 }
 
 // Parse config.ini to get install mode
@@ -706,8 +716,15 @@ void ipl_main(void) {
     // Perform the installation
     do_install();
 
-    // Restore hekate_ipl.ini from backup after installation completes
-    if (restore_hekate_ini()) {
+    // Keep the HATS pack's hekate_ipl.ini after a complete install. Only
+    // restore the pre-install file when the install was incomplete or the
+    // pack did not provide bootloader/hekate_ipl.ini.
+    if (total_errors == 0 && file_exists(HEKATE_INI)) {
+        discard_hekate_ini_backups();
+        set_color(COLOR_GREEN);
+        gfx_printf("\n[OK] HATS hekate_ipl.ini installed\n");
+        set_color(COLOR_WHITE);
+    } else if (restore_hekate_ini()) {
         set_color(COLOR_GREEN);
         gfx_printf("\n[OK] hekate_ipl.ini restored\n");
         set_color(COLOR_WHITE);
