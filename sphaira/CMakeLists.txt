@@ -33,7 +33,7 @@ option(ENABLE_DEVOPTAB_SFTP "" OFF)
 # MINOR: new features (backwards compatible)
 # PATCH: bug fixes (backwards compatible)
 set(HATS_TOOLS_APP_NAME "MM HATS INSTALLER")
-set(HATS_TOOLS_VERSION "2.1.0")
+set(HATS_TOOLS_VERSION "2.2.0")
 set(sphaira_VERSION ${HATS_TOOLS_VERSION})
 
 project(mm-tools
