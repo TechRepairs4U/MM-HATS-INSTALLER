@@ -402,20 +402,28 @@ void MainMenu::StartUpdate() {
             R_TRY(fs.RenameFile(temp_path, app_path));
             R_SUCCEED();
         },
-        [update_version](Result rc) {
+        [update_version, update_is_nsp](Result rc) {
             if (R_FAILED(rc)) {
                 App::Push<ui::ErrorBox>(rc, "Failed to update MM HATS INSTALLER.");
                 return;
             }
 
+            const auto message = update_is_nsp
+                ? std::string{"MM HATS INSTALLER "} + update_version + " was installed.\nExit to the dashboard and launch it again?"
+                : std::string{"MM HATS INSTALLER "} + update_version + " was installed.\nRestart now?";
+
             App::Push<ui::OptionBox>(
-                "MM HATS INSTALLER " + update_version + " was installed.\nRestart now?",
+                message,
                 "Later"_i18n,
-                "Restart"_i18n,
+                update_is_nsp ? "Exit"_i18n : "Restart"_i18n,
                 1,
-                [](auto index) {
+                [update_is_nsp](auto index) {
                     if (index && *index == 1) {
-                        App::ExitRestart();
+                        if (update_is_nsp) {
+                            App::Exit();
+                        } else {
+                            App::ExitRestart();
+                        }
                     }
                 }
             );
