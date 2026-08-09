@@ -178,6 +178,13 @@ bool ensureInstallerFiles() {
         {"romfs:/package/config/mm-tools/icons/uninstall-components.rgba", "/config/mm-tools/icons/uninstall-components.rgba", false},
     };
 
+    const auto romfs_result = romfsInit();
+    if (R_FAILED(romfs_result)) {
+        log_write("ensureInstallerFiles: failed to mount ROMFS: 0x%X\n", romfs_result);
+        return false;
+    }
+    ON_SCOPE_EXIT(romfsExit());
+
     fs::FsNativeSd fs;
     if (R_FAILED(fs.GetFsOpenResult())) {
         log_write("ensureInstallerFiles: failed to open SD filesystem\n");
