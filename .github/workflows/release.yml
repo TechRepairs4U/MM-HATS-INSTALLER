@@ -23,6 +23,12 @@ jobs:
           chmod +x build_release.sh
           ./build_release.sh
 
+      - name: Restore desktop installer apps
+        run: |
+          mkdir -p out/desktop
+          curl -fL "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/hats-installer/HATS-Installer-Windows.x64.exe" -o out/desktop/HATS-Installer-Windows.x64.exe
+          curl -fL "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/hats-installer/HATS-Installer.dmg" -o out/desktop/HATS-Installer.dmg
+
       - name: Publish installer release
         uses: softprops/action-gh-release@v2
         with:
@@ -31,3 +37,5 @@ jobs:
           files: |
             out/MM-HATS-INSTALLER-*.zip
             build/Release/mm-tools.nro
+            out/desktop/HATS-Installer-Windows.x64.exe
+            out/desktop/HATS-Installer.dmg

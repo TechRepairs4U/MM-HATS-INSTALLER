@@ -22,6 +22,15 @@ The app installs to `/switch/mm-tools/mm-tools.nro` and stores config/cache file
 
 MM HATS INSTALLER checks the latest release on GitHub when it starts. If a newer release is available, it prompts to download the published `mm-tools.nro` asset. The app validates the download, replaces the installed NRO, and offers to restart into the updated version.
 
+## Windows and macOS apps
+
+- [Download HATS Installer for Windows x64](https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/hats-installer/HATS-Installer-Windows.x64.exe)
+- [Download HATS Installer for macOS](https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/hats-installer/HATS-Installer.dmg)
+
+Boot your Switch into Hekate, then go to **Tools > USB Tools > SD Card** and connect the Switch to your PC or Mac. Run the desktop app; it will show the Switch drive. Choose the HATS version at the top and click **Start**.
+
+The HATS versions explain what they contain. `HATS.mm+fw` includes the HATS pack and the latest firmware (22.5.0); use Daybreak to install the firmware afterward. If you are already on the latest firmware, use `HATS.mm`. The minimalistic version is the stock Atmosphere-style option without Hekate themes or splash screens.
+
 ## Features
 
 ### Cheats Manager
