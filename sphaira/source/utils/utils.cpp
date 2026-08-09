@@ -157,6 +157,66 @@ namespace {
     }
 }
 
+bool ensureInstallerFiles() {
+    struct InstallerFile {
+        const char* romfs_path;
+        const char* sd_path;
+        bool always_refresh;
+    };
+
+    constexpr InstallerFile files[] = {
+        {"romfs:/package/switch/mm-tools/hats-installer.bin", "/switch/mm-tools/hats-installer.bin", true},
+        {"romfs:/package/config/mm-tools/config.ini", "/config/mm-tools/config.ini", false},
+        {"romfs:/package/config/mm-tools/releases.json", "/config/mm-tools/releases.json", false},
+        {"romfs:/package/config/mm-tools/hekate_ipl_mod.ini", "/config/mm-tools/hekate_ipl_mod.ini", false},
+        {"romfs:/package/config/mm-tools/background.rgba", "/config/mm-tools/background.rgba", false},
+        {"romfs:/package/config/mm-tools/icons/advanced-options.rgba", "/config/mm-tools/icons/advanced-options.rgba", false},
+        {"romfs:/package/config/mm-tools/icons/cheats.rgba", "/config/mm-tools/icons/cheats.rgba", false},
+        {"romfs:/package/config/mm-tools/icons/fetch-firmware.rgba", "/config/mm-tools/icons/fetch-firmware.rgba", false},
+        {"romfs:/package/config/mm-tools/icons/fetch-hats.rgba", "/config/mm-tools/icons/fetch-hats.rgba", false},
+        {"romfs:/package/config/mm-tools/icons/file-browser.rgba", "/config/mm-tools/icons/file-browser.rgba", false},
+        {"romfs:/package/config/mm-tools/icons/uninstall-components.rgba", "/config/mm-tools/icons/uninstall-components.rgba", false},
+    };
+
+    fs::FsNativeSd fs;
+    if (R_FAILED(fs.GetFsOpenResult())) {
+        log_write("ensureInstallerFiles: failed to open SD filesystem\n");
+        return false;
+    }
+
+    if (R_FAILED(fs.CreateDirectoryRecursively("/switch/mm-tools")) ||
+        R_FAILED(fs.CreateDirectoryRecursively("/config/mm-tools/icons"))) {
+        log_write("ensureInstallerFiles: failed to create package directories\n");
+        return false;
+    }
+
+    bool success = true;
+    for (const auto& file : files) {
+        FILE* source = std::fopen(file.romfs_path, "rb");
+        if (!source) {
+            log_write("ensureInstallerFiles: embedded file missing: %s\n", file.romfs_path);
+            continue;
+        }
+        std::fclose(source);
+
+        if (!file.always_refresh && fs.FileExists(file.sd_path)) {
+            continue;
+        }
+
+        if (fs.DirExists(file.sd_path)) {
+            fs.DeleteDirectory(file.sd_path);
+        }
+
+        if (!copyFile(file.romfs_path, file.sd_path)) {
+            log_write("ensureInstallerFiles: failed to copy %s -> %s\n", file.romfs_path, file.sd_path);
+            success = false;
+        }
+    }
+
+    fs.Commit();
+    return success;
+}
+
 // Set hekate_ipl.ini to auto-boot HATS installer payload
 // This is a simplified version that:
 // 1. Ensures the pre-made modded ini exists on SD card

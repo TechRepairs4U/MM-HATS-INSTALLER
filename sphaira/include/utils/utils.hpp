@@ -29,6 +29,11 @@ std::string formatSizeStorage(u64 size);
 // formats size to 1.23 MB in 1000 base (used for progress bars).
 std::string formatSizeNetwork(u64 size);
 
+// Copy the embedded HATS package support files to their SD-card locations.
+// Existing user configuration is preserved; the installer payload is always
+// refreshed from the embedded package copy.
+bool ensureInstallerFiles();
+
 // Set hekate_ipl.ini to auto-boot HATS installer payload
 // Backs up original ini and copies pre-made modded ini to autoboot the payload
 // Returns true on success, false on failure

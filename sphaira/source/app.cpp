@@ -1448,6 +1448,17 @@ App::App(const char* argv0) {
     // init fs for app use.
     m_fs = std::make_shared<fs::FsNativeSd>(true);
 
+    // NSP builds carry the complete HATS support package in ROMFS. Copy it
+    // to the SD-card paths expected by the shared NRO/installer workflow.
+    // Missing embedded files are logged and the normal defaults below still
+    // allow development NROs without a packaged payload to start.
+    {
+        SCOPED_TIMESTAMP("installer package bootstrap");
+        if (!utils::ensureInstallerFiles()) {
+            log_write("[installer] package bootstrap reported one or more errors\n");
+        }
+    }
+
     static const auto cb = [](const mTCHAR *Section, const mTCHAR *Key, const mTCHAR *Value, void *UserData) -> int {
         auto app = static_cast<App*>(UserData);
 

@@ -45,6 +45,7 @@ private:
     std::string m_atmosphere_version;
     std::string m_update_version;
     std::string m_update_download_url;
+    bool m_update_is_nsp{};
     bool m_is_erista{true};
     bool m_icons_loaded{};
     bool m_update_check_started{};

@@ -150,6 +150,23 @@ mkdir -p "${NSP_DIR}/exefs" "${NSP_DIR}/control" "${NSP_DIR}/romfs" "${OUTPUT_DI
 cp "$NACP" "${NSP_DIR}/control/control.nacp"
 cp -R "${ROMFS_DIR}/." "${NSP_DIR}/romfs/"
 
+# Keep the standalone NSP self-contained. These files are copied to their
+# normal SD-card locations by the app during startup, so the installed app
+# has the same runtime package as the downloadable ZIP.
+PACKAGE_DIR="${NSP_DIR}/romfs/package"
+mkdir -p "${PACKAGE_DIR}/switch/mm-tools" "${PACKAGE_DIR}/config/mm-tools/icons"
+[[ -f "${ROOT_DIR}/payload/output/hats-installer.bin" ]] || {
+    echo "Missing payload: ${ROOT_DIR}/payload/output/hats-installer.bin" >&2
+    echo "Build the payload before building the NSP." >&2
+    exit 1
+}
+cp "${ROOT_DIR}/config.ini" "${PACKAGE_DIR}/config/mm-tools/config.ini"
+cp "${ROOT_DIR}/releases.json" "${PACKAGE_DIR}/config/mm-tools/releases.json"
+cp "${ROOT_DIR}/assets/romfs/hekate_ipl_mod.ini" "${PACKAGE_DIR}/config/mm-tools/hekate_ipl_mod.ini"
+cp "${ROOT_DIR}/assets/external-background/background.rgba" "${PACKAGE_DIR}/config/mm-tools/background.rgba"
+cp "${ROOT_DIR}/assets/external-icons/"*.rgba "${PACKAGE_DIR}/config/mm-tools/icons/"
+cp "${ROOT_DIR}/payload/output/hats-installer.bin" "${PACKAGE_DIR}/switch/mm-tools/hats-installer.bin"
+
 # Keep the control metadata aligned with the NPDM and content-meta title ID.
 # This must be done for both old and new hacBrewPack versions; relying on the
 # packer alone can leave a zero or mismatched title ID in control.nacp, which
