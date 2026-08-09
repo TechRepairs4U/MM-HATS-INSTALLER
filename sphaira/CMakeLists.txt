@@ -842,6 +842,30 @@ target_include_directories(mm-tools PRIVATE ${CMAKE_BINARY_DIR})
 # copy the romfs
 file(COPY ${CMAKE_SOURCE_DIR}/assets/romfs DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+# Embed the complete HATS support package so an installed NSP can bootstrap
+# the same SD-card files as the ZIP/NRO release. The payload is produced by
+# build_release.sh before CMake configures the release build.
+set(HATS_PACKAGE_ROMFS_DIR ${CMAKE_CURRENT_BINARY_DIR}/romfs/package)
+file(MAKE_DIRECTORY
+    ${HATS_PACKAGE_ROMFS_DIR}/switch/mm-tools
+    ${HATS_PACKAGE_ROMFS_DIR}/config/mm-tools/icons
+)
+file(COPY ${CMAKE_SOURCE_DIR}/config.ini DESTINATION ${HATS_PACKAGE_ROMFS_DIR}/config/mm-tools)
+file(COPY ${CMAKE_SOURCE_DIR}/releases.json DESTINATION ${HATS_PACKAGE_ROMFS_DIR}/config/mm-tools)
+file(COPY ${CMAKE_SOURCE_DIR}/assets/romfs/hekate_ipl_mod.ini DESTINATION ${HATS_PACKAGE_ROMFS_DIR}/config/mm-tools)
+file(COPY ${CMAKE_SOURCE_DIR}/assets/external-background/background.rgba DESTINATION ${HATS_PACKAGE_ROMFS_DIR}/config/mm-tools)
+
+file(GLOB HATS_EXTERNAL_ICONS CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/assets/external-icons/*.rgba)
+foreach(HATS_ICON ${HATS_EXTERNAL_ICONS})
+    file(COPY ${HATS_ICON} DESTINATION ${HATS_PACKAGE_ROMFS_DIR}/config/mm-tools/icons)
+endforeach()
+
+if(EXISTS ${CMAKE_SOURCE_DIR}/payload/output/hats-installer.bin)
+    file(COPY ${CMAKE_SOURCE_DIR}/payload/output/hats-installer.bin DESTINATION ${HATS_PACKAGE_ROMFS_DIR}/switch/mm-tools)
+else()
+    message(WARNING "hats-installer.bin is not available; packaged builds will not contain the installer payload")
+endif()
+
 # create assets target
 dkp_add_asset_target(sphaira_romfs ${CMAKE_CURRENT_BINARY_DIR}/romfs)
 

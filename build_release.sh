@@ -14,6 +14,19 @@ build_preset() {
     cmake --build --preset $1 || { echo "=== Build FAILED ==="; exit 1; }
 }
 
+# --- PAYLOAD --- #
+echo "=== Building HATS-Installer Payload ==="
+(cd payload && make clean && make) || { echo "=== Payload build FAILED ==="; exit 1; }
+
+# Verify payload was built
+if [ ! -f "payload/output/hats-installer.bin" ]; then
+    echo "=== ERROR: hats-installer.bin not found! Payload build may have failed. ==="
+    exit 1
+fi
+echo "=== hats-installer.bin built successfully ==="
+
+# Build the NRO after the payload so standalone NSP builds can embed it in
+# ROMFS and bootstrap it to the SD card on first launch.
 echo "=== Building MM HATS INSTALLER NRO ==="
 build_preset Release
 
@@ -25,17 +38,6 @@ fi
 echo "=== mm-tools.nro built successfully ==="
 
 rm -rf out
-
-# --- PAYLOAD --- #
-echo "=== Building HATS-Installer Payload ==="
-(cd payload && make clean && make) || { echo "=== Payload build FAILED ==="; exit 1; }
-
-# Verify payload was built
-if [ ! -f "payload/output/hats-installer.bin" ]; then
-    echo "=== ERROR: hats-installer.bin not found! Payload build may have failed. ==="
-    exit 1
-fi
-echo "=== hats-installer.bin built successfully ==="
 
 # --- PACKAGE --- #
 mkdir -p out/switch/mm-tools/

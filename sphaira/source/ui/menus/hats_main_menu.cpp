@@ -17,6 +17,7 @@
 #include "threaded_file_transfer.hpp"
 #include "hats_version.hpp"
 #include "i18n.hpp"
+#include "yati/yati.hpp"
 
 #include <yyjson.h>
 #include <cstring>
@@ -256,7 +257,8 @@ void MainMenu::CheckForUpdates() {
                 return;
             }
 
-            std::string download_url;
+            std::string nsp_download_url;
+            std::string zip_download_url;
             auto* assets = yyjson_is_obj(root) ? yyjson_obj_get(root, "assets") : nullptr;
             if (assets && yyjson_is_arr(assets)) {
                 size_t idx, max;
@@ -270,17 +272,23 @@ void MainMenu::CheckForUpdates() {
                     auto* url_value = yyjson_obj_get(asset, "browser_download_url");
                     const char* name = name_value && yyjson_is_str(name_value) ? yyjson_get_str(name_value) : nullptr;
                     const char* url = url_value && yyjson_is_str(url_value) ? yyjson_get_str(url_value) : nullptr;
-                    if (name && url
-                        && std::string{name}.starts_with("MM-HATS-INSTALLER-")
-                        && std::string{name}.ends_with(".zip")) {
-                        download_url = url;
-                        break;
+                    if (!name || !url || !std::string{name}.starts_with("MM-HATS-INSTALLER-")) {
+                        continue;
+                    }
+
+                    if (std::string{name}.ends_with(".nsp")) {
+                        nsp_download_url = url;
+                    } else if (std::string{name}.ends_with(".zip")) {
+                        zip_download_url = url;
                     }
                 }
             }
 
             m_update_version = tag;
-            m_update_download_url = download_url;
+            // Prefer the installable NSP. Keep the ZIP as a compatibility
+            // fallback for older releases that predate NSP update assets.
+            m_update_is_nsp = !nsp_download_url.empty();
+            m_update_download_url = m_update_is_nsp ? nsp_download_url : zip_download_url;
             const auto latest_version = NormaliseVersionTag(m_update_version);
             const bool is_newer = App::IsVersionNewer(APP_DISPLAY_VERSION, latest_version.c_str());
             yyjson_doc_free(document);
@@ -291,14 +299,16 @@ void MainMenu::CheckForUpdates() {
             }
 
             if (m_update_download_url.empty()) {
-                log_write("update check: release %s has no mm-tools.nro asset\n", m_update_version.c_str());
+                log_write("update check: release %s has no NSP or ZIP asset\n", m_update_version.c_str());
                 return;
             }
 
             log_write("update available: %s\n", m_update_version.c_str());
             App::Push<ui::OptionBox>(
-                "MM HATS INSTALLER " + m_update_version + " is available.\n"
-                "Download the full package and install it now?",
+                std::string{"MM HATS INSTALLER "} + m_update_version + " is available.\n"
+                + (m_update_is_nsp
+                    ? "Download and install the NSP now?"
+                    : "Download the full package and install it now?"),
                 "Later"_i18n,
                 "Update"_i18n,
                 1,
@@ -319,38 +329,56 @@ void MainMenu::CheckForUpdates() {
 void MainMenu::StartUpdate() {
     const auto download_url = m_update_download_url;
     const auto update_version = m_update_version;
+    const bool update_is_nsp = m_update_is_nsp;
 
     App::Push<ui::ProgressBox>(
         0,
         "Updating"_i18n,
         update_version,
-        [download_url, update_version](auto pbox) -> Result {
+        [download_url, update_version, update_is_nsp](auto pbox) -> Result {
             fs::FsNativeSd fs;
             R_TRY(fs.GetFsOpenResult());
 
             const auto app_path = App::GetExePath();
+            const fs::FsPath nsp_path{"/switch/mm-tools/cache/mm-tools-update.nsp"};
             const fs::FsPath zip_path{"/switch/mm-tools/cache/mm-tools-update.zip"};
             const auto temp_path = app_path + ".update";
-            ON_SCOPE_EXIT({ fs.DeleteFile(zip_path); fs.DeleteFile(temp_path); });
+            ON_SCOPE_EXIT({ fs.DeleteFile(nsp_path); fs.DeleteFile(zip_path); fs.DeleteFile(temp_path); });
 
-            if (fs.FileExists(zip_path)) {
-                R_TRY(fs.DeleteFile(zip_path));
+            const auto update_path = update_is_nsp ? nsp_path : zip_path;
+
+            if (fs.FileExists(update_path)) {
+                R_TRY(fs.DeleteFile(update_path));
             }
-            if (fs.FileExists(temp_path)) {
+            if (!update_is_nsp && fs.FileExists(temp_path)) {
                 R_TRY(fs.DeleteFile(temp_path));
             }
 
             if (!pbox->ShouldExit()) {
-                pbox->NewTransfer("Downloading MM HATS INSTALLER package " + update_version);
+                pbox->NewTransfer("Downloading MM HATS INSTALLER " + update_version);
                 const auto result = curl::Api().ToFile(
                     curl::Url{download_url},
-                    curl::Path{zip_path},
+                    curl::Path{update_path.s},
                     curl::OnProgress{pbox->OnDownloadProgressCallback()}
                 );
                 R_UNLESS(result.success, Result_MainFailedToDownloadUpdate);
             }
 
             R_TRY(pbox->ShouldExitResult());
+
+            if (update_is_nsp) {
+                pbox->NewTransfer("Installing MM HATS INSTALLER " + update_version);
+                // Use the existing full NSP installer so the title, control
+                // metadata, and content are registered by the system. The
+                // local hacBrewPack output has a non-retail fixed header
+                // signature, so skip only that signature check; NCA content
+                // and install validation remain enabled.
+                yati::ConfigOverride install_override{};
+                install_override.skip_if_already_installed = false;
+                install_override.skip_rsa_header_fixed_key_verify = true;
+                R_TRY(yati::InstallFromFile(pbox, &fs, nsp_path, install_override));
+                R_SUCCEED();
+            }
 
             pbox->NewTransfer("Extracting mm-tools.nro");
             R_TRY(thread::TransferUnzipAll(
@@ -380,20 +408,28 @@ void MainMenu::StartUpdate() {
             R_TRY(fs.RenameFile(temp_path, app_path));
             R_SUCCEED();
         },
-        [update_version](Result rc) {
+        [update_version, update_is_nsp](Result rc) {
             if (R_FAILED(rc)) {
                 App::Push<ui::ErrorBox>(rc, "Failed to update MM HATS INSTALLER.");
                 return;
             }
 
+            const auto message = update_is_nsp
+                ? std::string{"MM HATS INSTALLER "} + update_version + " was installed.\nExit to the dashboard and launch it again?"
+                : std::string{"MM HATS INSTALLER "} + update_version + " was installed.\nRestart now?";
+
             App::Push<ui::OptionBox>(
-                "MM HATS INSTALLER " + update_version + " was installed.\nRestart now?",
+                message,
                 "Later"_i18n,
-                "Restart"_i18n,
+                update_is_nsp ? "Exit"_i18n : "Restart"_i18n,
                 1,
-                [](auto index) {
+                [update_is_nsp](auto index) {
                     if (index && *index == 1) {
-                        App::ExitRestart();
+                        if (update_is_nsp) {
+                            App::Exit();
+                        } else {
+                            App::ExitRestart();
+                        }
                     }
                 }
             );

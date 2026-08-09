@@ -89,6 +89,24 @@ if [[ -z "$ELF2NSO" || -z "$NPDMTOOL" || -z "$NACPTOOL" ]]; then
     exit 1
 fi
 
+VERSION="${HATS_TOOLS_VERSION:-}"
+if [[ -z "$VERSION" ]]; then
+    VERSION="$(sed -n 's/^[[:space:]]*set(HATS_TOOLS_VERSION[[:space:]]*"\([^"]*\)".*/\1/p' "${ROOT_DIR}/sphaira/CMakeLists.txt" | head -n 1)"
+fi
+[[ -n "$VERSION" ]] || { echo "Unable to determine HATS_TOOLS_VERSION" >&2; exit 1; }
+
+# Give each release a new content-meta version so older updater builds do not
+# mistake the package for the already-installed zero-version application.
+CNMT_VERSION="${HATS_TOOLS_CNMT_VERSION:-}"
+if [[ -z "$CNMT_VERSION" ]]; then
+    IFS=. read -r CNMT_MAJOR CNMT_MINOR CNMT_PATCH _ <<< "$VERSION"
+    CNMT_MAJOR="${CNMT_MAJOR:-0}"
+    CNMT_MINOR="${CNMT_MINOR:-0}"
+    CNMT_PATCH="${CNMT_PATCH:-0}"
+    CNMT_VERSION=$((10#$CNMT_MAJOR * 10000 + 10#$CNMT_MINOR * 100 + 10#$CNMT_PATCH))
+fi
+[[ "$CNMT_VERSION" =~ ^[0-9]+$ ]] || { echo "Invalid HATS_TOOLS_CNMT_VERSION '$CNMT_VERSION'" >&2; exit 2; }
+
 if [[ -z "$HACBREWPACK" ]]; then
     if [[ -x "${ROOT_DIR}/tools/hacbrewpack/hacbrewpack" ]]; then
         HACBREWPACK="${ROOT_DIR}/tools/hacbrewpack/hacbrewpack"
@@ -113,6 +131,27 @@ if [[ -z "$HACBREWPACK" ]]; then
     if [[ ! -f "${HACBREWPACK_DIR}/config.mk" && -f "${HACBREWPACK_DIR}/config.mk.template" ]]; then
         cp "${HACBREWPACK_DIR}/config.mk.template" "${HACBREWPACK_DIR}/config.mk"
     fi
+
+    # hacBrewPack does not expose the content-meta version as a command-line
+    # option. Patch its ignored local checkout before compiling it.
+    CNMT_SOURCE="${HACBREWPACK_DIR}/cnmt.c"
+    if [[ -f "$CNMT_SOURCE" ]]; then
+        if grep -q 'HATS_TOOLS_CNMT_VERSION' "$CNMT_SOURCE"; then
+            sed -i -E "s/(title_version[[:space:]]*=[[:space:]]*)[0-9]+;/\1${CNMT_VERSION};/" "$CNMT_SOURCE"
+        else
+            awk -v version="$CNMT_VERSION" '
+                /^void cnmt_create/ {
+                    print
+                    getline
+                    print
+                    print "    cnmt_ctx->cnmt_header.title_version = " version "; /* HATS_TOOLS_CNMT_VERSION */"
+                    next
+                }
+                { print }
+            ' "$CNMT_SOURCE" > "${CNMT_SOURCE}.tmp"
+            mv "${CNMT_SOURCE}.tmp" "$CNMT_SOURCE"
+        fi
+    fi
     make -C "$HACBREWPACK_DIR"
     HACBREWPACK="${HACBREWPACK_DIR}/hacbrewpack"
 fi
@@ -121,12 +160,6 @@ if [[ ! -x "$HACBREWPACK" ]]; then
     echo "hacBrewPack executable not found: $HACBREWPACK" >&2
     exit 1
 fi
-
-VERSION="${HATS_TOOLS_VERSION:-}"
-if [[ -z "$VERSION" ]]; then
-    VERSION="$(sed -n 's/^[[:space:]]*set(HATS_TOOLS_VERSION[[:space:]]*"\([^"]*\)".*/\1/p' "${ROOT_DIR}/sphaira/CMakeLists.txt" | head -n 1)"
-fi
-[[ -n "$VERSION" ]] || { echo "Unable to determine HATS_TOOLS_VERSION" >&2; exit 1; }
 
 ELF="${BUILD_DIR}/sphaira/mm-tools.elf"
 NACP="${BUILD_DIR}/sphaira/mm-tools.nacp"
@@ -149,6 +182,30 @@ mkdir -p "${NSP_DIR}/exefs" "${NSP_DIR}/control" "${NSP_DIR}/romfs" "${OUTPUT_DI
 "$ELF2NSO" "$ELF" "${NSP_DIR}/exefs/main"
 cp "$NACP" "${NSP_DIR}/control/control.nacp"
 cp -R "${ROMFS_DIR}/." "${NSP_DIR}/romfs/"
+
+# Keep the standalone NSP self-contained. These files are copied to their
+# normal SD-card locations by the app during startup, so the installed app
+# has the same runtime package as the downloadable ZIP.
+PACKAGE_DIR="${NSP_DIR}/romfs/package"
+mkdir -p "${PACKAGE_DIR}/switch/mm-tools" "${PACKAGE_DIR}/config/mm-tools/icons"
+[[ -f "${ROOT_DIR}/payload/output/hats-installer.bin" ]] || {
+    echo "Missing payload: ${ROOT_DIR}/payload/output/hats-installer.bin" >&2
+    echo "Build the payload before building the NSP." >&2
+    exit 1
+}
+cp "${ROOT_DIR}/config.ini" "${PACKAGE_DIR}/config/mm-tools/config.ini"
+cp "${ROOT_DIR}/releases.json" "${PACKAGE_DIR}/config/mm-tools/releases.json"
+cp "${ROOT_DIR}/assets/romfs/hekate_ipl_mod.ini" "${PACKAGE_DIR}/config/mm-tools/hekate_ipl_mod.ini"
+cp "${ROOT_DIR}/assets/external-background/background.rgba" "${PACKAGE_DIR}/config/mm-tools/background.rgba"
+cp "${ROOT_DIR}/assets/external-icons/"*.rgba "${PACKAGE_DIR}/config/mm-tools/icons/"
+cp "${ROOT_DIR}/payload/output/hats-installer.bin" "${PACKAGE_DIR}/switch/mm-tools/hats-installer.bin"
+
+# Keep the control metadata aligned with the NPDM and content-meta title ID.
+# This must be done for both old and new hacBrewPack versions; relying on the
+# packer alone can leave a zero or mismatched title ID in control.nacp, which
+# makes the installed application exit immediately on launch.
+"$NACPTOOL" --create "MM HATS INSTALLER" "TechRepairs4U" "$VERSION" \
+    "${NSP_DIR}/control/control.nacp" "--titleid=${TITLE_ID}"
 
 for language in \
     AmericanEnglish BritishEnglish Japanese French German LatinAmericanSpanish \
@@ -176,9 +233,7 @@ if grep -q -- '--titleid' <<< "$HACBREWPACK_HELP"; then
         --titlepublisher "TechRepairs4U"
     )
 else
-    echo "hacBrewPack has no --titleid override; writing the title ID into NACP before packaging."
-    "$NACPTOOL" --create "MM HATS INSTALLER" "TechRepairs4U" "$VERSION" \
-        "${NSP_DIR}/control/control.nacp" "--titleid=${TITLE_ID}"
+    echo "hacBrewPack has no --titleid override; using the explicit NACP title ID."
 fi
 (
     cd "$NSP_DIR"

@@ -882,7 +882,7 @@ Yati::~Yati() {
 Result Yati::Setup(const ConfigOverride& override) {
     config.sd_card_install = override.sd_card_install.value_or(App::GetApp()->m_install_sd.Get());
     config.allow_downgrade = App::GetApp()->m_allow_downgrade.Get();
-    config.skip_if_already_installed = App::GetApp()->m_skip_if_already_installed.Get();
+    config.skip_if_already_installed = override.skip_if_already_installed.value_or(App::GetApp()->m_skip_if_already_installed.Get());
     config.ticket_only = App::GetApp()->m_ticket_only.Get();
     config.skip_base = App::GetApp()->m_skip_base.Get();
     config.skip_patch = App::GetApp()->m_skip_patch.Get();
