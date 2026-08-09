@@ -5,11 +5,11 @@
 #include "ui/menus/hats_main_menu.hpp"
 
 int main(int argc, char** argv) {
-    if (!argc || !argv) {
-        return 1;
-    }
-
-    auto app = std::make_unique<sphaira::App>(argv[0]);
+    // Installed applications may be launched without command-line
+    // arguments. Homebrew normally supplies argv[0], but returning here
+    // makes the NSP immediately exit back to the dashboard.
+    const char* argv0 = (argc > 0 && argv && argv[0]) ? argv[0] : "";
+    auto app = std::make_unique<sphaira::App>(argv0);
     app->Push<sphaira::ui::menu::hats::MainMenu>();
     app->Loop();
     return 0;
