@@ -54,8 +54,8 @@ cp releases.json out/config/mm-tools/releases.json
 cp assets/external-icons/*.rgba out/config/mm-tools/icons/
 cp assets/external-background/background.rgba out/config/mm-tools/background.rgba
 
-pushd out
-zip -r9 MM-HATS-INSTALLER-$VERSION.zip switch config
-popd
+(
+    cd out && zip -r9 "MM-HATS-INSTALLER-$VERSION.zip" switch config
+) || { echo "=== ERROR: Release ZIP creation failed. ==="; exit 1; }
 
 echo "=== Release built: out/MM-HATS-INSTALLER-$VERSION.zip ==="
