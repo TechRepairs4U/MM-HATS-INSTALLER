@@ -31,4 +31,3 @@ jobs:
           files: |
             out/MM-HATS-INSTALLER-*.zip
             build/Release/mm-tools.nro
-            out/switch/mm-updater/mm-updater.nro

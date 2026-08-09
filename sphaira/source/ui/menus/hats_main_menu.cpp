@@ -2,7 +2,9 @@
 #include "ui/menus/hats_pack_menu.hpp"
 #include "ui/menus/firmware_menu.hpp"
 #include "ui/menus/cheats_menu.hpp"
+#include "ui/error_box.hpp"
 #include "ui/option_box.hpp"
+#include "ui/progress_box.hpp"
 
 #include "ui/nvg_util.hpp"
 
@@ -16,6 +18,7 @@
 #include "i18n.hpp"
 
 #include <yyjson.h>
+#include <cstring>
 
 namespace sphaira::ui::menu::hats {
 
@@ -25,7 +28,6 @@ constexpr int ICON_HEIGHT = 256;
 constexpr std::size_t ICON_RGBA_SIZE = ICON_WIDTH * ICON_HEIGHT * 4;
 constexpr const char* UPDATE_REPOSITORY = "TechRepairs4U/MM-HATS-INSTALLER";
 constexpr const char* UPDATE_RELEASES_URL = "https://api.github.com/repos/TechRepairs4U/MM-HATS-INSTALLER/releases/latest";
-constexpr const char* UPDATER_PATH = "/switch/mm-updater/mm-updater.nro";
 
 auto NormaliseVersionTag(std::string version) -> std::string {
     if (version.starts_with('v') || version.starts_with('V')) {
@@ -253,7 +255,29 @@ void MainMenu::CheckForUpdates() {
                 return;
             }
 
+            std::string download_url;
+            auto* assets = yyjson_is_obj(root) ? yyjson_obj_get(root, "assets") : nullptr;
+            if (assets && yyjson_is_arr(assets)) {
+                size_t idx, max;
+                yyjson_val* asset;
+                yyjson_arr_foreach(assets, idx, max, asset) {
+                    if (!yyjson_is_obj(asset)) {
+                        continue;
+                    }
+
+                    auto* name_value = yyjson_obj_get(asset, "name");
+                    auto* url_value = yyjson_obj_get(asset, "browser_download_url");
+                    const char* name = name_value && yyjson_is_str(name_value) ? yyjson_get_str(name_value) : nullptr;
+                    const char* url = url_value && yyjson_is_str(url_value) ? yyjson_get_str(url_value) : nullptr;
+                    if (name && url && std::strcmp(name, "mm-tools.nro") == 0) {
+                        download_url = url;
+                        break;
+                    }
+                }
+            }
+
             m_update_version = tag;
+            m_update_download_url = download_url;
             const auto latest_version = NormaliseVersionTag(m_update_version);
             const bool is_newer = App::IsVersionNewer(APP_DISPLAY_VERSION, latest_version.c_str());
             yyjson_doc_free(document);
@@ -263,26 +287,21 @@ void MainMenu::CheckForUpdates() {
                 return;
             }
 
-            log_write("update available: %s\n", m_update_version.c_str());
-            const bool updater_installed = fs::FsNativeSd().FileExists(UPDATER_PATH);
-            if (!updater_installed) {
-                App::Push<ui::OptionBox>(
-                    "Update " + m_update_version + " is available.\n"
-                    "Install the latest MM HATS INSTALLER package to add the updater.",
-                    "OK"_i18n
-                );
+            if (m_update_download_url.empty()) {
+                log_write("update check: release %s has no mm-tools.nro asset\n", m_update_version.c_str());
                 return;
             }
 
+            log_write("update available: %s\n", m_update_version.c_str());
             App::Push<ui::OptionBox>(
                 "MM HATS INSTALLER " + m_update_version + " is available.\n"
-                "Start the updater now?",
+                "Download and install it now?",
                 "Later"_i18n,
                 "Update"_i18n,
                 1,
                 [this](auto index) {
                     if (index && *index == 1) {
-                        LaunchUpdater();
+                        StartUpdate();
                     }
                 }
             );
@@ -294,19 +313,67 @@ void MainMenu::CheckForUpdates() {
     }
 }
 
-void MainMenu::LaunchUpdater() {
-    if (!fs::FsNativeSd().FileExists(UPDATER_PATH)) {
-        App::Push<ui::OptionBox>(
-            "MM Updater was not found at " + std::string{UPDATER_PATH} + ".",
-            "OK"_i18n
-        );
-        return;
-    }
+void MainMenu::StartUpdate() {
+    const auto download_url = m_update_download_url;
+    const auto update_version = m_update_version;
 
-    const auto rc = nro_launch(UPDATER_PATH);
-    if (R_FAILED(rc)) {
-        App::PushErrorBox(rc, "Failed to start MM Updater."_i18n);
-    }
+    App::Push<ui::ProgressBox>(
+        0,
+        "Updating"_i18n,
+        update_version,
+        [download_url, update_version](auto pbox) -> Result {
+            fs::FsNativeSd fs;
+            R_TRY(fs.GetFsOpenResult());
+
+            const auto app_path = App::GetExePath();
+            const auto temp_path = app_path + ".update";
+            ON_SCOPE_EXIT(fs.DeleteFile(temp_path));
+
+            if (fs.FileExists(temp_path)) {
+                R_TRY(fs.DeleteFile(temp_path));
+            }
+
+            if (!pbox->ShouldExit()) {
+                pbox->NewTransfer("Downloading MM HATS INSTALLER " + update_version);
+                const auto result = curl::Api().ToFile(
+                    curl::Url{download_url},
+                    curl::Path{temp_path},
+                    curl::OnProgress{pbox->OnDownloadProgressCallback()}
+                );
+                R_UNLESS(result.success, Result_MainFailedToDownloadUpdate);
+            }
+
+            R_TRY(pbox->ShouldExitResult());
+
+            std::vector<u8> data;
+            R_TRY(fs.read_entire_file(temp_path, data));
+            R_TRY(nro_verify(data));
+
+            if (fs.FileExists(app_path)) {
+                R_TRY(fs.DeleteFile(app_path));
+            }
+            R_TRY(fs.RenameFile(temp_path, app_path));
+            R_SUCCEED();
+        },
+        [update_version](Result rc) {
+            if (R_FAILED(rc)) {
+                App::Push<ui::ErrorBox>(rc, "Failed to update MM HATS INSTALLER.");
+                return;
+            }
+
+            App::Push<ui::OptionBox>(
+                "MM HATS INSTALLER " + update_version + " was installed.\nRestart now?",
+                "Later"_i18n,
+                "Restart"_i18n,
+                1,
+                [](auto index) {
+                    if (index && *index == 1) {
+                        App::ExitRestart();
+                    }
+                }
+            );
+        }
+    );
 }
 
 } // namespace sphaira::ui::menu::hats

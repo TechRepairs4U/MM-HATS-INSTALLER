@@ -29,7 +29,7 @@ private:
     void RefreshVersionInfo();
     void LoadIcons();
     void CheckForUpdates();
-    void LaunchUpdater();
+    void StartUpdate();
 
 private:
     std::vector<MainMenuItem> m_items;
@@ -44,6 +44,7 @@ private:
     std::string m_firmware_version;
     std::string m_atmosphere_version;
     std::string m_update_version;
+    std::string m_update_download_url;
     bool m_is_erista{true};
     bool m_icons_loaded{};
     bool m_update_check_started{};

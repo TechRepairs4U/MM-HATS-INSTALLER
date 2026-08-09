@@ -20,9 +20,7 @@ Custom HATS installer for Magic Monkei.
 
 The app installs to `/switch/mm-tools/mm-tools.nro` and stores config/cache files under `/config/mm-tools`.
 
-MM HATS INSTALLER checks the latest release on GitHub when it starts. If a newer release is available, it prompts to launch `MM UPDATER SWITCH`, which downloads the published `mm-tools.nro` asset and safely replaces the installed app.
-
-The package includes the updater at `/switch/mm-updater/mm-updater.nro`.
+MM HATS INSTALLER checks the latest release on GitHub when it starts. If a newer release is available, it prompts to download the published `mm-tools.nro` asset. The app validates the download, replaces the installed NRO, and offers to restart into the updated version.
 
 ## Features
 
