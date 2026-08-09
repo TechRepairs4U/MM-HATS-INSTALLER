@@ -14,6 +14,7 @@
 #include "fs.hpp"
 #include "log.hpp"
 #include "nro.hpp"
+#include "threaded_file_transfer.hpp"
 #include "hats_version.hpp"
 #include "i18n.hpp"
 
@@ -269,7 +270,9 @@ void MainMenu::CheckForUpdates() {
                     auto* url_value = yyjson_obj_get(asset, "browser_download_url");
                     const char* name = name_value && yyjson_is_str(name_value) ? yyjson_get_str(name_value) : nullptr;
                     const char* url = url_value && yyjson_is_str(url_value) ? yyjson_get_str(url_value) : nullptr;
-                    if (name && url && std::strcmp(name, "mm-tools.nro") == 0) {
+                    if (name && url
+                        && std::string{name}.starts_with("MM-HATS-INSTALLER-")
+                        && std::string{name}.ends_with(".zip")) {
                         download_url = url;
                         break;
                     }
@@ -295,7 +298,7 @@ void MainMenu::CheckForUpdates() {
             log_write("update available: %s\n", m_update_version.c_str());
             App::Push<ui::OptionBox>(
                 "MM HATS INSTALLER " + m_update_version + " is available.\n"
-                "Download and install it now?",
+                "Download the full package and install it now?",
                 "Later"_i18n,
                 "Update"_i18n,
                 1,
@@ -326,24 +329,46 @@ void MainMenu::StartUpdate() {
             R_TRY(fs.GetFsOpenResult());
 
             const auto app_path = App::GetExePath();
+            const fs::FsPath zip_path{"/switch/mm-tools/cache/mm-tools-update.zip"};
             const auto temp_path = app_path + ".update";
-            ON_SCOPE_EXIT(fs.DeleteFile(temp_path));
+            ON_SCOPE_EXIT({ fs.DeleteFile(zip_path); fs.DeleteFile(temp_path); });
 
+            if (fs.FileExists(zip_path)) {
+                R_TRY(fs.DeleteFile(zip_path));
+            }
             if (fs.FileExists(temp_path)) {
                 R_TRY(fs.DeleteFile(temp_path));
             }
 
             if (!pbox->ShouldExit()) {
-                pbox->NewTransfer("Downloading MM HATS INSTALLER " + update_version);
+                pbox->NewTransfer("Downloading MM HATS INSTALLER package " + update_version);
                 const auto result = curl::Api().ToFile(
                     curl::Url{download_url},
-                    curl::Path{temp_path},
+                    curl::Path{zip_path},
                     curl::OnProgress{pbox->OnDownloadProgressCallback()}
                 );
                 R_UNLESS(result.success, Result_MainFailedToDownloadUpdate);
             }
 
             R_TRY(pbox->ShouldExitResult());
+
+            pbox->NewTransfer("Extracting mm-tools.nro");
+            R_TRY(thread::TransferUnzipAll(
+                pbox,
+                zip_path,
+                &fs,
+                "/",
+                [&](const fs::FsPath& name, fs::FsPath& path) -> bool {
+                    if (std::strcmp(name, "switch/mm-tools/mm-tools.nro") != 0) {
+                        return false;
+                    }
+
+                    path = temp_path;
+                    return true;
+                }
+            ));
+
+            R_UNLESS(fs.FileExists(temp_path), Result_MainFailedToDownloadUpdate);
 
             std::vector<u8> data;
             R_TRY(fs.read_entire_file(temp_path, data));

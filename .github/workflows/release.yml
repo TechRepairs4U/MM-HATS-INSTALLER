@@ -35,6 +35,5 @@ jobs:
           name: MM HATS INSTALLER ${{ github.ref_name }}
           files: |
             out/MM-HATS-INSTALLER-*.zip
-            build/Release/mm-tools.nro
             out/desktop/HATS-Installer-Windows.x64.exe
             out/desktop/HATS-Installer.dmg
