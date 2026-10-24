@@ -1,0 +1,247 @@
+[
+  {
+    "tag": "v2.1.5",
+    "file": "Magic-Monkei-HATS-Installer.x64.exe",
+    "bytes": 96128549,
+    "sha256": "b79678825a03932b23867998cfac70f42968869ee7752136d120093d8cbc2be4",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.5/Magic-Monkei-HATS-Installer.x64.exe"
+  },
+  {
+    "tag": "v2.1.5",
+    "file": "Magic-Monkei-HATS-Universal.dmg",
+    "bytes": 105554568,
+    "sha256": "3a920120eabba00cf4cd939175238e4bd92fbcf5f2930757ddb78f5e8ab28d84",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.5/Magic-Monkei-HATS-Universal.dmg"
+  },
+  {
+    "tag": "v2.1.5",
+    "file": "MM-HATS-INSTALLER-2.1.5.nsp",
+    "bytes": 8523480,
+    "sha256": "a0bda908aafe7abd864d6531c2388aafda325dc647b45e16fc5ec776b7072a97",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.5/MM-HATS-INSTALLER-2.1.5.nsp"
+  },
+  {
+    "tag": "v2.1.5",
+    "file": "MM-HATS-INSTALLER-2.1.5.zip",
+    "bytes": 3570410,
+    "sha256": "cc3aaf2a7596337f6823324ee69de17cacb263ccaf3b510617f5cb20034a5b5f",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.5/MM-HATS-INSTALLER-2.1.5.zip"
+  },
+  {
+    "tag": "v2.1.4",
+    "file": "MM-HATS-INSTALLER-2.1.4.nsp",
+    "bytes": 8523992,
+    "sha256": "8bf4962ca9af02c0851552d962af3dd7f9c3f9a8bd277b9b207dbb5665ad4848",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.4/MM-HATS-INSTALLER-2.1.4.nsp"
+  },
+  {
+    "tag": "v2.1.4",
+    "file": "MM-HATS-INSTALLER-2.1.4.zip",
+    "bytes": 3570402,
+    "sha256": "95d7d97c05401cc4802e9badc1ad074c42a4845f3b7042462d455ae2f1ef5bc2",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.4/MM-HATS-INSTALLER-2.1.4.zip"
+  },
+  {
+    "tag": "v2.1.3",
+    "file": "MM-HATS-INSTALLER-2.1.3.nsp",
+    "bytes": 8522968,
+    "sha256": "7206e34ce8d61c01fdb41eec0062f8597a3e97aaba469bde492d0e8a43321177",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.3/MM-HATS-INSTALLER-2.1.3.nsp"
+  },
+  {
+    "tag": "v2.1.3",
+    "file": "MM-HATS-INSTALLER-2.1.3.zip",
+    "bytes": 3570179,
+    "sha256": "e1f1434e74518e86361863eb65bc262e3c899b323d8315786c258a307256c49a",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.3/MM-HATS-INSTALLER-2.1.3.zip"
+  },
+  {
+    "tag": "windows-v2.1.8",
+    "file": "Magic-Monkei-HATS-Installer-2.1.8-Windows-x64.zip",
+    "bytes": 90209685,
+    "sha256": "1738b15246af805a9980b9618ece9b1a286d559b23a861c7ec332c9460faa54e",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/windows-v2.1.8/Magic-Monkei-HATS-Installer-2.1.8-Windows-x64.zip"
+  },
+  {
+    "tag": "windows-v2.1.8",
+    "file": "Magic-Monkei-HATS-Installer.x64.exe",
+    "bytes": 96128549,
+    "sha256": "b79678825a03932b23867998cfac70f42968869ee7752136d120093d8cbc2be4",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/windows-v2.1.8/Magic-Monkei-HATS-Installer.x64.exe"
+  },
+  {
+    "tag": "v2.4",
+    "file": "HATS-Installer-Windows.x64.exe",
+    "bytes": 20322975,
+    "sha256": "37f958541424875d4b5bfce512d9eaef32889e76ff750809b281a8610a9474e1",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.4/HATS-Installer-Windows.x64.exe"
+  },
+  {
+    "tag": "v2.4",
+    "file": "HATS-Installer.dmg",
+    "bytes": 28996691,
+    "sha256": "83d9c8ab7bc6a976e6e9a3c251a0844fa9d7df41cb9b88a6ae0baccffa890349",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.4/HATS-Installer.dmg"
+  },
+  {
+    "tag": "v2.4",
+    "file": "MM-HATS-INSTALLER-2.4.0.nsp",
+    "bytes": 8239832,
+    "sha256": "f29ab696cfdfb27c95959b849573a4e1770798bd12952caef01f3f9e2f3566de",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.4/MM-HATS-INSTALLER-2.4.0.nsp"
+  },
+  {
+    "tag": "v2.4",
+    "file": "MM-HATS-INSTALLER-2.4.0.zip",
+    "bytes": 3380789,
+    "sha256": "b25962e531e17c461902f44d30401e662cf63694806b8ce3939c8d1e4318dced",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.4/MM-HATS-INSTALLER-2.4.0.zip"
+  },
+  {
+    "tag": "v2.3",
+    "file": "HATS-Installer-Windows.x64.exe",
+    "bytes": 20322975,
+    "sha256": "37f958541424875d4b5bfce512d9eaef32889e76ff750809b281a8610a9474e1",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.3/HATS-Installer-Windows.x64.exe"
+  },
+  {
+    "tag": "v2.3",
+    "file": "HATS-Installer.dmg",
+    "bytes": 28996691,
+    "sha256": "83d9c8ab7bc6a976e6e9a3c251a0844fa9d7df41cb9b88a6ae0baccffa890349",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.3/HATS-Installer.dmg"
+  },
+  {
+    "tag": "v2.3",
+    "file": "MM-HATS-INSTALLER-2.3.0.nsp",
+    "bytes": 8240344,
+    "sha256": "dc72a208983d80fdbf48babd2334a27a63cefc63c6176595d2775ec511088841",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.3/MM-HATS-INSTALLER-2.3.0.nsp"
+  },
+  {
+    "tag": "v2.3",
+    "file": "MM-HATS-INSTALLER-2.3.0.zip",
+    "bytes": 3380092,
+    "sha256": "5deaac60132b76f5cea1b1c5d60436ffca8b1f81303fd11df90994acc75922b1",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.3/MM-HATS-INSTALLER-2.3.0.zip"
+  },
+  {
+    "tag": "v2.2",
+    "file": "HATS-Installer-Windows.x64.exe",
+    "bytes": 20322975,
+    "sha256": "37f958541424875d4b5bfce512d9eaef32889e76ff750809b281a8610a9474e1",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.2/HATS-Installer-Windows.x64.exe"
+  },
+  {
+    "tag": "v2.2",
+    "file": "HATS-Installer.dmg",
+    "bytes": 28996691,
+    "sha256": "83d9c8ab7bc6a976e6e9a3c251a0844fa9d7df41cb9b88a6ae0baccffa890349",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.2/HATS-Installer.dmg"
+  },
+  {
+    "tag": "v2.2",
+    "file": "MM-HATS-INSTALLER-2.2.0.nsp",
+    "bytes": 8239832,
+    "sha256": "c514d485c92bf1b6aa73d85b326aa4a46a947a7cafc0ad6b67f9808936b6777d",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.2/MM-HATS-INSTALLER-2.2.0.nsp"
+  },
+  {
+    "tag": "v2.2",
+    "file": "MM-HATS-INSTALLER-2.2.0.zip",
+    "bytes": 3380781,
+    "sha256": "a1d0e420114e654994f935e3e7f4938d7c9443b8ae1a62085166928319deabc7",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.2/MM-HATS-INSTALLER-2.2.0.zip"
+  },
+  {
+    "tag": "v2.1",
+    "file": "HATS-Installer-Windows.x64.exe",
+    "bytes": 20322975,
+    "sha256": "37f958541424875d4b5bfce512d9eaef32889e76ff750809b281a8610a9474e1",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1/HATS-Installer-Windows.x64.exe"
+  },
+  {
+    "tag": "v2.1",
+    "file": "HATS-Installer.dmg",
+    "bytes": 28996691,
+    "sha256": "83d9c8ab7bc6a976e6e9a3c251a0844fa9d7df41cb9b88a6ae0baccffa890349",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1/HATS-Installer.dmg"
+  },
+  {
+    "tag": "v2.1",
+    "file": "MM-HATS-INSTALLER-2.1.0.nsp",
+    "bytes": 8239832,
+    "sha256": "d18b959850eda6b5c529c307524968e5f305d707b18922aa1215d908948ac2f0",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1/MM-HATS-INSTALLER-2.1.0.nsp"
+  },
+  {
+    "tag": "v2.1",
+    "file": "MM-HATS-INSTALLER-2.1.0.zip",
+    "bytes": 3380796,
+    "sha256": "56152d291ee0eced0884bbf127630e3e9500b62b1afc765f2bb250b11e1b2e6f",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1/MM-HATS-INSTALLER-2.1.0.zip"
+  },
+  {
+    "tag": "v2.0",
+    "file": "Magic-Monkei-HATS-Installer.x64.exe",
+    "bytes": 96112899,
+    "sha256": "bdc9f8676f6464678b336dc623898618b54e2b4b5009daa8af1bee75d0d52976",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.0/Magic-Monkei-HATS-Installer.x64.exe"
+  },
+  {
+    "tag": "v2.0",
+    "file": "Magic-Monkei-HATS-Universal.dmg",
+    "bytes": 105524388,
+    "sha256": "99b82d66278b31de1bc17b06142e8f83ebd404f696f098985ce28ebfbf96f253",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.0/Magic-Monkei-HATS-Universal.dmg"
+  },
+  {
+    "tag": "v2.0",
+    "file": "MM-HATS-INSTALLER-2.0.0.nsp",
+    "bytes": 8239832,
+    "sha256": "6d597386b068e0fad9990d66bb89bad8068adc5d038f5373f601d1843f72aefc",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.0/MM-HATS-INSTALLER-2.0.0.nsp"
+  },
+  {
+    "tag": "v2.0",
+    "file": "MM-HATS-INSTALLER-2.0.0.zip",
+    "bytes": 3380789,
+    "sha256": "611b8126e15aa3570b51cb8921efb8beeaaeba00f7b5af8d150210ce586f8927",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.0/MM-HATS-INSTALLER-2.0.0.zip"
+  },
+  {
+    "tag": "hats-installer",
+    "file": "HATS-Installer-Chromebook.apk",
+    "bytes": 2953545,
+    "sha256": "405218582323e813d60639dbe5807b28dacdb46e865f8874f24eef84b1db7c5b",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/hats-installer/HATS-Installer-Chromebook.apk"
+  },
+  {
+    "tag": "hats-installer",
+    "file": "HATS-Installer-Windows.x64.exe",
+    "bytes": 20322975,
+    "sha256": "37f958541424875d4b5bfce512d9eaef32889e76ff750809b281a8610a9474e1",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/hats-installer/HATS-Installer-Windows.x64.exe"
+  },
+  {
+    "tag": "hats-installer",
+    "file": "HATS-Installer.dmg",
+    "bytes": 28996691,
+    "sha256": "83d9c8ab7bc6a976e6e9a3c251a0844fa9d7df41cb9b88a6ae0baccffa890349",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/hats-installer/HATS-Installer.dmg"
+  },
+  {
+    "tag": "hats-installer",
+    "file": "MM-HATS-INSTALLER-v1.0.0.zip",
+    "bytes": 2466374,
+    "sha256": "e0995d027dd5a6669c99055ad2c8fe99cb3280504ee33cf3fedda0d6903fd22b",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/hats-installer/MM-HATS-INSTALLER-v1.0.0.zip"
+  },
+  {
+    "tag": "hats-installer",
+    "file": "MM.HATS.INSTALLER.nsp",
+    "bytes": 9553624,
+    "sha256": "87fe4517f21a8c99698c9a52db9af334651ad6c90bcd27fe961e7704cef18586",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/hats-installer/MM.HATS.INSTALLER.nsp"
+  }
+]
