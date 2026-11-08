@@ -1,5 +1,26 @@
 [
   {
+    "tag": "v2.1.6",
+    "file": "MM-HATS-INSTALLER-2.1.6.nsp",
+    "bytes": 8525528,
+    "sha256": "72212e94435b65f5a21ed69ca050714652adfb7a8c940f27e437321c2dd39c8d",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.6/MM-HATS-INSTALLER-2.1.6.nsp"
+  },
+  {
+    "tag": "v2.1.6",
+    "file": "MM-HATS-INSTALLER-2.1.6.zip",
+    "bytes": 5441447,
+    "sha256": "3f9676041c94d454ad8949513b4f8bcac9e3734de41666b2f87e1c446736544e",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.6/MM-HATS-INSTALLER-2.1.6.zip"
+  },
+  {
+    "tag": "v2.1.6",
+    "file": "MM-HATS-INSTALLER-2.1.6-source.tar.gz",
+    "bytes": 10275763,
+    "sha256": "d863236c156ca87700d8c514428131bcbc260626cd33117cfbb923dc361ca8e4",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.6/MM-HATS-INSTALLER-2.1.6-source.tar.gz"
+  },
+  {
     "tag": "v2.1.5",
     "file": "Magic-Monkei-HATS-Installer.x64.exe",
     "bytes": 96128549,

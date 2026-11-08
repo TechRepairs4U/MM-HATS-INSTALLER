@@ -6,13 +6,20 @@ Download the HATS installer for your device:
 | --- | --- |
 | Windows x64 | [Windows 2.1.8](https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/tag/windows-v2.1.8) |
 | macOS 14+ — Apple Silicon and Intel | [macOS 2.3.0](https://github.com/TechRepairs4U/Hats-App-Mac/releases/tag/macos-v2.3.0) |
-| Nintendo Switch | [Switch v2.1.5](https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/tag/v2.1.5) |
+| Nintendo Switch | [Switch v2.1.6](https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/tag/v2.1.6) |
 
-This is a downloads-only repository. It contains installer releases, installation
-notes and SHA-256 checksums. It contains no Atmosphere source tree, source archive
-or custom Atmosphere patches, and no history from the previous repository.
-GitHub's automatic “Source code” downloads contain this download documentation,
-not application or firmware source code.
+The Nintendo Switch app source is in [switch/](switch/), with a matching source
+archive attached to the Switch release. Build instructions are in
+[switch/BUILD_NSP.md](switch/BUILD_NSP.md). No custom Atmosphere source or patches
+are included. Desktop installers remain available at the links above.
+
+Switch v2.1.6 repairs the outdated installer payload behind `0x668 / Module 104`.
+On each launch it checks and repairs its own payload and artwork, removes old
+installer themes and update leftovers, and selects the bundled theme. Correct
+files are not rewritten. Settings, downloads and recovery backups are preserved.
+HATS packs can no longer downgrade the installer's files. Both NSP and NRO include
+the repair files. Build/package and filesystem regression checks passed; physical
+Switch testing is pending.
 
 ## Install
 
@@ -31,12 +38,10 @@ Windows app updates use stable `windows-v…` releases here and require the dire
 [Hats-App-Mac repository](https://github.com/TechRepairs4U/Hats-App-Mac/releases).
 Older desktop builds without an updater need one manual installation first.
 
-The Switch updater uses this repository's **Latest** release, which remains
-`v2.1.5`. Older releases and prereleases are retained for existing download links.
-Recreated releases have new GitHub IDs, so an existing Switch installation may
-once offer the current release again.
+The Switch updater uses this repository's **Latest** release, now `v2.1.6`.
+Older releases and prereleases remain available for existing download links.
+Install the new NSP over the previous app, or update the NRO and restart it.
 
-Each release includes `SHA256SUMS.txt` for its installer files. The binaries were
-restored unchanged from verified local backups. `INSTALLERS.json` records those
-filenames, checksums and download locations. No release build or announcement
-workflow runs from this downloads repository.
+Each release includes `SHA256SUMS.txt`. `INSTALLERS.json` records filenames,
+checksums and download locations. No release build or announcement workflow
+runs from this repository.

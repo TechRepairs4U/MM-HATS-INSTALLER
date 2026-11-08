@@ -1,0 +1,157 @@
+#include "hats_version.hpp"
+#include "fs.hpp"
+#include "log.hpp"
+
+#include <dirent.h>
+#include <cstring>
+#include <string>
+
+namespace sphaira::hats {
+
+namespace {
+
+bool readAtmosphereConfig(SplConfigItem item, u64* out) {
+    if (R_FAILED(splInitialize())) {
+        return false;
+    }
+    ON_SCOPE_EXIT(splExit());
+    return R_SUCCEEDED(splGetConfig(item, out));
+}
+
+} // namespace
+
+RunningBuildInfo getRunningBuildInfo() {
+    u64 version = 0, emummc = 0;
+    const bool has_ams = readAtmosphereConfig((SplConfigItem)65000, &version);
+    const bool has_mode = has_ams && readAtmosphereConfig((SplConfigItem)65007, &emummc);
+    std::string identity;
+    if (has_ams && R_SUCCEEDED(setsysInitialize())) {
+        ON_SCOPE_EXIT(setsysExit());
+        char buffer[64]{};
+        u64 returned_size = 0;
+        const Result rc = serviceDispatchOut(setsysGetServiceSession(), MagicMonkeiBuildIdentityCommand, returned_size,
+            .buffer_attrs = { SfBufferAttr_HipcMapAlias | SfBufferAttr_Out },
+            .buffers = { {buffer, sizeof(buffer)} });
+        if (R_SUCCEEDED(rc) && returned_size == MagicMonkeiBuildIdentity.size() + 1 &&
+            returned_size <= sizeof(buffer) && buffer[returned_size - 1] == '\0') {
+            identity.assign(buffer, returned_size - 1);
+        }
+    }
+    return FormatRunningBuild(has_ams, version, identity, has_mode, emummc);
+}
+
+std::string getHatsVersion() {
+    std::string hatsVersion = "Not Found";
+
+    auto dir = opendir("/");
+    if (!dir) {
+        return hatsVersion;
+    }
+
+    while (auto d = readdir(dir)) {
+        if (d->d_type != DT_REG) {
+            continue;
+        }
+
+        const char* name = d->d_name;
+
+        // Check for fixed filename HATS_VERSION.txt
+        if (std::strcmp(name, "HATS_VERSION.txt") == 0) {
+            // Read the version from the file (first line is "# HATS-YYYY-MM-DD-hash")
+            std::string path = "/" + std::string(name);
+            FILE* f = fopen(path.c_str(), "r");
+            if (f) {
+                char line[64];
+                if (fgets(line, sizeof(line), f)) {
+                    // Remove trailing newline
+                    size_t len = std::strlen(line);
+                    if (len > 0 && line[len - 1] == '\n') {
+                        line[len - 1] = '\0';
+                    }
+                    // Skip leading "# " if present
+                    const char* start = line;
+                    if (std::strncmp(line, "# ", 2) == 0) {
+                        start = line + 2;
+                    }
+                    hatsVersion = std::string(start);
+                }
+                fclose(f);
+                break;
+            }
+        }
+
+        // Legacy support: check for old HATS-*.txt format
+        size_t len = std::strlen(name);
+        if (len > 9 && std::strncmp(name, "HATS-", 5) == 0 &&
+            std::strcmp(name + len - 4, ".txt") == 0 &&
+            hatsVersion == "Not Found") {
+            hatsVersion = std::string(name, len - 4);
+            break;
+        }
+    }
+
+    closedir(dir);
+    return hatsVersion;
+}
+
+std::string getSystemFirmware() {
+    SetSysFirmwareVersion ver;
+    if (R_SUCCEEDED(setsysInitialize())) {
+        if (R_SUCCEEDED(setsysGetFirmwareVersion(&ver))) {
+            setsysExit();
+            return ver.display_version;
+        }
+        setsysExit();
+    }
+    return "Unknown";
+}
+
+std::string getAtmosphereVersion() {
+    u64 version;
+    std::string res = "Unknown";
+
+    if (readAtmosphereConfig((SplConfigItem)65000, &version)) {
+        res = std::to_string((version >> 56) & ((1 << 8) - 1)) + "." +
+              std::to_string((version >> 48) & ((1 << 8) - 1)) + "." +
+              std::to_string((version >> 40) & ((1 << 8) - 1));
+
+        u64 emummc;
+        if (readAtmosphereConfig((SplConfigItem)65007, &emummc)) {
+            res += emummc ? "|E" : "|S";
+        }
+    }
+
+    return res;
+}
+
+std::string getAmsInfo() {
+    std::string hatsVer = getHatsVersion();
+    std::string amsVer = getAtmosphereVersion();
+
+    return hatsVer + "; Atmosphere: " + amsVer;
+}
+
+bool isAtmosphere() {
+    u64 version;
+    return readAtmosphereConfig((SplConfigItem)65000, &version);
+}
+
+bool isErista() {
+    u64 hardware_type;
+    bool result = true; // Default to Erista if unknown
+
+    if (R_FAILED(splInitialize())) {
+        return result;
+    }
+
+    if (R_SUCCEEDED(splGetConfig(SplConfigItem_HardwareType, &hardware_type))) {
+        // Erista types are 0 (Icosa), 1 (Copper)
+        // Mariko types are 2 (Hoag), 3 (Iowa), 4 (Calcio), 5 (Aula)
+        result = hardware_type <= 1;
+    }
+
+    splExit();
+    return result;
+}
+
+} // namespace sphaira::hats

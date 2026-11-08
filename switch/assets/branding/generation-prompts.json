@@ -1,0 +1,24 @@
+{
+  "mode": "Built-in image_gen tool; no fallback CLI",
+  "reference": "Original assets/icon.jpg supplied as the Magic Monkei identity reference for the wallpaper.",
+  "assets": {
+    "background": {
+      "transparent_background": false,
+      "prompt": "Use case: style-transfer. Edit the supplied Magic Monkei app art into a professional minimalist 16:9 landscape app wallpaper, ideally 1280 by 720. The original is the identity reference: retain the recognisable side-profile wizard monkey with its pointed magician hat and star eye, but remove ALL lettering, the HATS and UPDATER words, and the neon city. Create a refined near-black charcoal/plum canvas, very subtle grain and a quiet violet atmospheric glow along the far right edge. A restrained low-contrast engraved lavender line-art version of the original wizard monkey mascot occupies only the upper-right quadrant, centred around 86 percent width, 26 percent height, about 18 percent of canvas width. Preserve the characteristic mascot, do not substitute a realistic monkey. Keep the entire left 70 percent and lower 60 percent of the wallpaper extremely dark, calm and visually empty for readable live app controls. A couple of very faint broad curved light contours may frame the far edges. High-end editorial software aesthetic, balanced and understated. No text anywhere, no interface mockup, no cards, no grids, no glowing city, no bright saturated elements. The artwork will be used behind three large live UI cards."
+    },
+    "fetch-hats": {
+      "transparent_background": true,
+      "prompt": "Use case: stylized-concept. A polished professional utility app icon for Magic Monkei, part of a consistent set. Square format. Single large centred object with generous 15 percent transparent margin on every side, actual transparent background. Premium soft 3D studio render, satin pearl-white ceramic and brushed titanium, restrained lavender-violet accents, gentle ambient shadow. Rounded precise geometry, crisp readable silhouette at 96 pixels, shallow three-quarter view, lighting from upper left. No text, no letters, no border, no app tile, no extra scenery, no neon city. Subject: a compact open software package box with a simple thick lavender downward download arrow floating above the opening. Pearl-white box, muted violet inner lining, small embossed four-point magical sparkle on the front. One coherent icon, not a scene."
+    },
+    "fetch-firmware": {
+      "transparent_background": true,
+      "prompt": "Use case: stylized-concept. A polished professional utility app icon for Magic Monkei, part of a consistent set. Square format. Single large centred object with generous 15 percent transparent margin on every side, actual transparent background. Premium soft 3D studio render, satin pearl-white ceramic and brushed titanium, restrained lavender-violet accents, gentle ambient shadow. Rounded precise geometry, crisp readable silhouette at 96 pixels, shallow three-quarter view, lighting from upper left. No text, no letters, no border, no app tile, no extra scenery, no neon city. Subject: a square microchip with rounded pearl-white central body and eight short tidy titanium pins around its edges. A single bold lavender downward download arrow embossed on the central face. One coherent icon, no circuit-board backdrop."
+    },
+    "cheats": {
+      "transparent_background": true,
+      "prompt": "Use case: stylized-concept. A polished professional utility app icon for Magic Monkei, part of a consistent set. Square format. Single large centred object with generous 15 percent transparent margin on every side, actual transparent background. Premium soft 3D studio render, satin pearl-white ceramic and brushed titanium, restrained lavender-violet accents, gentle ambient shadow. Rounded precise geometry, crisp readable silhouette at 96 pixels, shallow three-quarter view, lighting from upper left. No text, no letters, no border, no app tile, no extra scenery, no neon city. Subject: a modern symmetrical game controller with pearl-white body, restrained lavender buttons and dark graphite sticks. A small elegant four-point lavender magical sparkle floats above its upper-right shoulder. One coherent icon, no cables, no controller brand logo."
+    }
+  },
+  "exports": "Wallpaper: 1280 x 720 RGBA. Icons: 256 x 256 RGBA with generated alpha retained. Original generated PNGs kept in assets/branding/source. PNG and raw RGBA exports are resized versions of that artwork.",
+  "preview": "HTML layout preview follows native source positions; example device values and browser fonts. Not a Switch screenshot or proof of a working console build."
+}
