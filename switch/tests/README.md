@@ -62,7 +62,7 @@ Before release, also build the full NRO and bundled payload with devkitPro and v
 - Existing bundled-source configurations migrate, and MM pack variants download from GitHub's latest release.
 - Cancel a HATS or firmware download; no launch/install prompt follows, and no partial ZIP appears in Cached Downloads.
 - Cached HATS packs work with an internet connection for the exclusion refresh; local firmware folder selection works offline. Cancelling returns to the original menu.
-- Invalid firmware is rejected. Verify downgrade and HATS compatibility prompts, sysMMC/emuMMC identification, exFAT handling, and post-install reboot on a suitable test console.
+- Invalid firmware is rejected. Verify downgrade/fuse prompts, running firmware and AMS/Magic Monkei identification, sysMMC/emuMMC target, exFAT handling, and post-install reboot. No HATS marker file is required, including offline local/cached installs.
 - Verify game-card and updated-game Build IDs, manual cheat overwrite confirmation, duplicate handling and the 128-entry download limit.
 - On a disposable SD-card copy, verify GTA V and another mod are excluded from backups, unchanged after online/cached installs, and that known sysmodules update. Check all four install modes.
 - Include a game NRO, a port directory, saves inside a known utility directory and an unknown overlay under `/switch`: none should be backed up, removed or overwritten. Confirm the recognised utility files update.
@@ -73,6 +73,12 @@ Before release, also build the full NRO and bundled payload with devkitPro and v
 Host tests do not validate device services, real SD-card I/O, UI layout or reboot behavior. A complete devkitPro build and device checks are required before release.
 
 ## Renderer command memory
+
+`option_box_layout_test.cpp` uses the fetched NanoVG C source and a host font
+to measure the reported warning, firmware install/downgrade confirmations,
+image dialogs and long scrolling messages. It checks that message viewports
+fit inside the dialog above the separate button row. Real Switch font rendering,
+controller scrolling and touch targets still need hardware verification.
 
 ```sh
 c++ -std=c++20 -Wall -Wextra -Werror -fsanitize=address,undefined \

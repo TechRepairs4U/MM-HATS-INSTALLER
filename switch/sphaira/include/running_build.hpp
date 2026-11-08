@@ -14,6 +14,11 @@ struct RunningBuildInfo {
     std::string mode{"Unknown"};
 };
 
+inline std::string DescribeRunningBuild(const RunningBuildInfo& info) {
+    if (info.version == "Unavailable") return "AMS unavailable";
+    return info.label == "MAGIC MONKEI BUILD" ? "Magic Monkei build (" + info.version + ")" : info.version;
+}
+
 inline RunningBuildInfo FormatRunningBuild(bool has_ams, std::uint64_t api_version,
         std::string_view identity, bool has_mode, std::uint64_t emummc) {
     RunningBuildInfo info;

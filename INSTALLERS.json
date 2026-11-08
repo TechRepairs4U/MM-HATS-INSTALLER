@@ -1,5 +1,26 @@
 [
   {
+    "tag": "v2.1.9",
+    "file": "MM-HATS-INSTALLER-2.1.9.nsp",
+    "bytes": 8731864,
+    "sha256": "571fcb563ddc836e35eb64399c5ed86586d81c20f3ad363166625a563cce922a",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.9/MM-HATS-INSTALLER-2.1.9.nsp"
+  },
+  {
+    "tag": "v2.1.9",
+    "file": "MM-HATS-INSTALLER-2.1.9.zip",
+    "bytes": 5681216,
+    "sha256": "e722c555c2f4e996992780346fda426365b6ff577ad2bec96f4fb1c1c3ba3319",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.9/MM-HATS-INSTALLER-2.1.9.zip"
+  },
+  {
+    "tag": "v2.1.9",
+    "file": "MM-HATS-INSTALLER-2.1.9-source.tar.gz",
+    "bytes": 10290189,
+    "sha256": "d9596fe5d918e1895a337dc5cf2a28a1f0c7deea301d4e952a4f44a8c0a23722",
+    "url": "https://github.com/TechRepairs4U/MM-HATS-INSTALLER/releases/download/v2.1.9/MM-HATS-INSTALLER-2.1.9-source.tar.gz"
+  },
+  {
     "tag": "v2.1.8",
     "file": "MM-HATS-INSTALLER-2.1.8.nsp",
     "bytes": 8733912,

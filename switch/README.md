@@ -1,10 +1,18 @@
-# MM HATS INSTALLER v2.1.8
+# MM HATS INSTALLER v2.1.9
 
 <p align="center">
   <img src="images/home-screen-preview.png" width="65%" />
 </p>
 
 Custom HATS installer for Magic Monkei.
+
+v2.1.9 removes the HATS marker-file/release-note compatibility gate from the
+firmware workflow. Firmware screens and confirmations read the current system
+firmware and running AMS/Magic Monkei build directly from the Switch. No
+`HATS_VERSION.txt` is required. Firmware package validation, downgrade/fuse
+warnings and the final installation confirmation remain. Confirmation boxes
+measure and wrap their text, grow to fit, and offer scrolling for long messages
+while keeping the buttons clear.
 
 v2.1.8 fixes the graphics command-buffer exhaustion identified in a v2.1.7
 crash log when opening Fetch Firmware (`0x767 / 2359-0003`). The renderer now
@@ -50,7 +58,7 @@ For the NRO edition, extract the **entire ZIP**. The NRO also contains its own v
 
 The **NSP edition** installs as a full HOME-menu application and includes its compiled program, artwork and installer payload. It checks and repairs its support files on every launch. Starting with v2.1.7, it downloads and installs NSP updates from GitHub and reloads automatically. The ZIP updater applies to the NRO edition. See [BUILD_NSP.md](BUILD_NSP.md) for packaging instructions.
 
-The home screen reads the **running** Atmosphere version from the Switch, displaying `AMS x.x.x` and sysMMC/emuMMC. It shows **MAGIC MONKEI BUILD** when the running custom firmware identifies itself as `Magicmonkei.com`. Install the matching updated custom Atmosphere and reboot to enable that identification. Stock, other custom builds and older Magic Monkei builds display the AMS version under **ATMOSPHERE**. SD-card HATS version markers are still used for firmware compatibility information, but do not determine the home-screen build identity.
+The home and firmware screens read the **running** Atmosphere version from the Switch, displaying `AMS x.x.x` and sysMMC/emuMMC. They identify the **Magic Monkei build** when the running custom firmware identifies itself as `Magicmonkei.com`. Install the matching updated custom Atmosphere and reboot to enable that identification. Stock, other custom builds and older Magic Monkei builds display the AMS version without the Magic Monkei label. HATS marker files and GitHub HATS release notes are not used to gate firmware installation. Displaying the running version does not certify support for every newer firmware release.
 
 MM HATS INSTALLER checks `TechRepairs4U/MM-HATS-INSTALLER/releases/latest` when it starts. GitHub's **Latest** stable release determines the update. NSP selects uploaded NSPs; NRO selects uploaded ZIPs. Multiple compatible assets produce a choice. Checks happen automatically; choosing Update starts installation. Update requests verify HTTPS using the bundled CA file checked and restored on the SD card at startup; temporary RomFS mounts are not needed during requests. NSPs also require the GitHub SHA-256 digest, a complete three-NCA package and the installer title ID. NSP v2.1.7 and later reload automatically after a successful installation.
 
@@ -90,7 +98,7 @@ Online installs download fresh bytes even if an asset's name or release tag is r
 
 ### Fetch Firmware
 
-Firmware can be downloaded to `/firmware`, reused from a validated cache, or selected from a local extracted folder with **Y / Local**. Installation uses AtmosphÃ¨re's Daybreak system-update service and validates the package before asking to install. The confirmation identifies sysMMC or emuMMC, reports FAT32/exFAT support, and warns about downgrades and unverified HATS compatibility. Cancellation is disabled during the actual system-update operation.
+Firmware can be downloaded to `/firmware`, reused from a validated cache, or selected from a local extracted folder with **Y / Local**. Installation uses AtmosphÃ¨re's Daybreak system-update service and validates the package before asking to install. The confirmation identifies sysMMC or emuMMC, reports FAT32/exFAT support, and shows the running AMS/Magic Monkei build, and warns about downgrades and fuse differences. Cancellation is disabled during the actual system-update operation.
 
 ### Upstream attribution
 

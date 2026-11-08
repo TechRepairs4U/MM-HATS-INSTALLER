@@ -31,7 +31,6 @@ namespace {
 
 constexpr const char* CACHE_PATH = "/switch/mm-tools/cache/hats";
 constexpr const char* RELEASES_CACHE = "/switch/mm-tools/cache/hats/firmware_releases.json";
-constexpr const char* HATS_RELEASES_CACHE = "/switch/mm-tools/cache/hats/hats_releases.json";
 constexpr const char* FUSES_CACHE = "/switch/mm-tools/cache/hats/fuses.json";
 constexpr const char* FUSES_URL = "https://raw.githubusercontent.com/sthetix/FuseNCA/master/fuses.json";
 constexpr const char* DOWNLOAD_TEMP = "/switch/mm-tools/cache/hats/firmware.zip";
@@ -41,12 +40,6 @@ constexpr size_t UPDATE_TASK_BUFFER_SIZE = 0x100000;
 struct FirmwareValidation {
     AmsSuUpdateInformation info{};
     AmsSuUpdateValidationInfo validation{};
-};
-
-struct HatsSupportInfo {
-    std::string release_name;
-    std::string supported_firmware;
-    bool installed{false};
 };
 
 std::string FormatFirmwareVersion(u32 version) {
@@ -239,80 +232,6 @@ void from_json(const fs::FsPath& path, std::vector<FuseEntry>& entries) {
     }
 }
 
-bool ReadInstalledHatsSupport(HatsSupportInfo* out) {
-    FILE* file = std::fopen("/HATS_VERSION.txt", "r");
-    if (!file) {
-        return false;
-    }
-
-    std::string body;
-    char line[512];
-    while (std::fgets(line, sizeof(line), file)) {
-        body += line;
-    }
-    std::fclose(file);
-
-    out->supported_firmware = ExtractSupportedFirmware(body);
-    if (out->supported_firmware.empty()) {
-        return false;
-    }
-
-    out->installed = true;
-    out->release_name = sphaira::hats::getHatsVersion();
-    return true;
-}
-
-Result FetchLatestHatsSupport(ProgressBox* pbox, HatsSupportInfo* out) {
-    pbox->NewTransfer("Checking installed HATS support...");
-    if (ReadInstalledHatsSupport(out)) {
-        return 0;
-    }
-
-    auto app = App::GetApp();
-    const std::string pack_url = app->m_pack_url.Get();
-
-    pbox->NewTransfer("Checking latest HATS support...");
-    const auto result = curl::Api().ToFile(
-        curl::Url{pack_url},
-        curl::Path{HATS_RELEASES_CACHE},
-        curl::Header{
-            {"Accept", "application/vnd.github+json"},
-        }
-    );
-    R_UNLESS(result.success, 0x1);
-
-    auto doc = yyjson_read_file(result.path.s, YYJSON_READ_NOFLAG, nullptr, nullptr);
-    R_UNLESS(doc, 0x1);
-    ON_SCOPE_EXIT(yyjson_doc_free(doc));
-
-    auto root = yyjson_doc_get_root(doc);
-    R_UNLESS(root && (yyjson_is_arr(root) || yyjson_is_obj(root)), 0x1);
-
-    auto release = yyjson_is_arr(root) ? yyjson_arr_get(root, 0) : root;
-    R_UNLESS(release && yyjson_is_obj(release), 0x1);
-
-    const char* name = nullptr;
-    if (auto name_val = yyjson_obj_get(release, "name")) {
-        name = yyjson_get_str(name_val);
-    }
-    if ((!name || !*name)) {
-        if (auto tag_val = yyjson_obj_get(release, "tag_name")) {
-            name = yyjson_get_str(tag_val);
-        }
-    }
-
-    const char* body = nullptr;
-    if (auto body_val = yyjson_obj_get(release, "body")) {
-        body = yyjson_get_str(body_val);
-    }
-
-    out->release_name = name ? name : "latest HATS";
-    out->supported_firmware = body ? ExtractSupportedFirmware(body) : "";
-    R_UNLESS(!out->supported_firmware.empty(), 0x1);
-
-    return 0;
-}
-
 auto DownloadAndExtract(ProgressBox* pbox, const FirmwareEntry& release) -> Result {
     fs::FsNativeSd fs;
     Result fs_result = fs.GetFsOpenResult();
@@ -405,6 +324,7 @@ FirmwareMenu::FirmwareMenu(bool open_local_picker) : MenuBase{"Firmware Releases
     fs::FsNativeSd().CreateDirectoryRecursively(CACHE_PATH);
 
     m_current_firmware = sphaira::hats::getSystemFirmware();
+    m_running_build = sphaira::hats::getRunningBuildInfo();
 
     this->SetActions(
         std::make_pair(Button::A, Action{"Download"_i18n, [this](){
@@ -451,16 +371,17 @@ void FirmwareMenu::Draw(NVGcontext* vg, Theme* theme) {
     MenuBase::Draw(vg, theme);
 
     // Draw current firmware info
+    const auto running_build = sphaira::hats::DescribeRunningBuild(m_running_build);
     if (m_current_fuse_count >= 0) {
         gfx::drawTextArgs(vg, 80.f, GetY() + 10.f, 18.f,
             NVG_ALIGN_LEFT | NVG_ALIGN_TOP,
             theme->GetColour(ThemeEntryID_TEXT_INFO),
-            "Current Firmware: %s | Fuses: %d", m_current_firmware.c_str(), m_current_fuse_count);
+            "Current Firmware: %s | %s | Fuses: %d", m_current_firmware.c_str(), running_build.c_str(), m_current_fuse_count);
     } else {
         gfx::drawTextArgs(vg, 80.f, GetY() + 10.f, 18.f,
             NVG_ALIGN_LEFT | NVG_ALIGN_TOP,
             theme->GetColour(ThemeEntryID_TEXT_INFO),
-            "Current Firmware: %s", m_current_firmware.c_str());
+            "Current Firmware: %s | %s", m_current_firmware.c_str(), running_build.c_str());
     }
 
     if (m_loading) {
@@ -553,6 +474,8 @@ void FirmwareMenu::Draw(NVGcontext* vg, Theme* theme) {
 
 void FirmwareMenu::OnFocusGained() {
     MenuBase::OnFocusGained();
+    m_current_firmware = sphaira::hats::getSystemFirmware();
+    m_running_build = sphaira::hats::getRunningBuildInfo();
 
     if (m_open_local_picker) {
         m_open_local_picker = false;
@@ -712,11 +635,12 @@ void FirmwareMenu::DownloadFirmware() {
     message += "Firmware will be extracted to /firmware.";
     if (is_downgrade || has_different_fuse_count) {
         message = is_downgrade ? "WARNING: This is a DOWNGRADE!\n\n" : "WARNING: Firmware fuse count differs!\n\n";
-        message += "Current: " + m_current_firmware + "\n";
-        message += "Target: " + release.tag_name + "\n\n";
         message += "Download firmware " + display_name + "?\n\n";
         message += "Firmware will be extracted to /firmware.";
     }
+
+    message += "\nCurrent firmware: " + m_current_firmware;
+    message += "\nRunning: " + sphaira::hats::DescribeRunningBuild(m_running_build);
 
     App::Push<OptionBox>(
         message,
@@ -726,21 +650,19 @@ void FirmwareMenu::DownloadFirmware() {
                 return;
             }
 
-            CheckHatsFirmwareSupport(release.tag_name, [this, release, display_name]() {
-                App::Push<ProgressBox>(0, "Downloading"_i18n, display_name,
-                    [release](auto pbox) -> Result {
-                        return DownloadAndExtract(pbox, release);
-                    },
-                    [this, display_name](Result rc) {
-                        if (rc == Result_TransferCancelled) return;
-                        if (R_SUCCEEDED(rc)) {
-                            PromptInstallFirmware(display_name, FIRMWARE_DEST);
-                        } else {
-                            App::Push<ErrorBox>(rc, "Failed to download " + display_name);
-                        }
+            App::Push<ProgressBox>(0, "Downloading"_i18n, display_name,
+                [release](auto pbox) -> Result {
+                    return DownloadAndExtract(pbox, release);
+                },
+                [this, display_name](Result rc) {
+                    if (rc == Result_TransferCancelled) return;
+                    if (R_SUCCEEDED(rc)) {
+                        PromptInstallFirmware(display_name, FIRMWARE_DEST);
+                    } else {
+                        App::Push<ErrorBox>(rc, "Failed to download " + display_name);
                     }
-                );
-            });
+                }
+            );
         }
     );
 }
@@ -848,20 +770,14 @@ void FirmwareMenu::PromptInstallFirmware(const std::string& display_name, const 
             const bool use_exfat = validation->info.exfat_supported &&
                                    R_SUCCEEDED(validation->validation.exfat_result);
 
-            const auto exit_local_only = [this]() {
-                if (m_local_only) {
-                    SetPop();
-                }
-            };
-
             const auto show_install_prompt = [this, display_name, path, version, use_exfat]() {
                 std::string message = "Install firmware " + version + " on " + GetFirmwareTargetName() + "?\n\n";
                 if (IsDowngrade(version) || HasDifferentFuseCount(version)) {
                     message = IsDowngrade(version) ? "WARNING: This is a DOWNGRADE!\n\n" : "WARNING: Firmware fuse count differs!\n\n";
-                    message += "Current: " + m_current_firmware + "\n";
-                    message += "Target: " + version + "\n\n";
                     message += "Install firmware " + version + " on " + GetFirmwareTargetName() + "?\n\n";
                 }
+                message += "Current firmware: " + m_current_firmware + "\n";
+                message += "Running: " + sphaira::hats::DescribeRunningBuild(m_running_build) + "\n\n";
                 message += use_exfat ? "FAT32 + exFAT support\n" : "FAT32 support only\n";
                 message += "Do not power off the console during installation.";
                 App::Push<OptionBox>(message, "Cancel"_i18n, "Install"_i18n, 1,
@@ -876,60 +792,7 @@ void FirmwareMenu::PromptInstallFirmware(const std::string& display_name, const 
                     });
             };
 
-            CheckHatsFirmwareSupport(version, show_install_prompt, exit_local_only);
-        });
-}
-
-void FirmwareMenu::CheckHatsFirmwareSupport(const std::string& target_version, const std::function<void()>& callback, const std::function<void()>& cancel_callback) {
-    auto support = std::make_shared<HatsSupportInfo>();
-    App::Push<ProgressBox>(0, "Checking"_i18n, "HATS compatibility",
-        [target_version, support](auto pbox) -> Result {
-            R_TRY(FetchLatestHatsSupport(pbox, support.get()));
-            if (support->installed && !isVersionNewer(ExtractFirmwareVersion(target_version), support->supported_firmware)) {
-                pbox->NewTransfer("HATS compatibility verified: up to " + support->supported_firmware);
-                svcSleepThread(1'000'000'000);
-            }
-            return pbox->ShouldExitResult();
-        },
-        [target_version, callback, cancel_callback, support](Result rc) {
-            if (rc == Result_TransferCancelled) return;
-            if (R_FAILED(rc)) {
-                std::string message = "Cannot verify HATS support for firmware " + target_version + ".\n";
-                message += "Offline support data is missing from HATS_VERSION.txt.\n";
-                message += "Connect to GitHub or update HATS before continuing.";
-                App::Push<OptionBox>(message, "Cancel"_i18n, "Continue"_i18n, 0,
-                    [callback, cancel_callback](auto op_index) {
-                        if (op_index && *op_index == 1) {
-                            callback();
-                        } else {
-                            cancel_callback();
-                        }
-                    });
-                return;
-            }
-
-            if (support->installed && !isVersionNewer(ExtractFirmwareVersion(target_version), support->supported_firmware)) {
-                callback();
-                return;
-            }
-
-            std::string message;
-            if (support->installed) {
-                message = "Installed HATS supports firmware up to " + support->supported_firmware + ".\n\n";
-                message += "Firmware " + target_version + " may not be supported yet.\n";
-            } else {
-                message = "Latest HATS supports firmware up to " + support->supported_firmware + ".\n\n";
-                message += "Installed HATS compatibility could not be verified.\nUpdate HATS before installing firmware.\n";
-            }
-            message += "Continue only if you accept the risk.";
-            App::Push<OptionBox>(message, "Cancel"_i18n, "Force"_i18n, 0,
-                [callback, cancel_callback](auto op_index) {
-                    if (op_index && *op_index == 1) {
-                        callback();
-                    } else {
-                        cancel_callback();
-                    }
-                });
+            show_install_prompt();
         });
 }
 

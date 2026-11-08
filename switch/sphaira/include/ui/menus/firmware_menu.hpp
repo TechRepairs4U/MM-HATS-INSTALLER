@@ -3,6 +3,7 @@
 #include "ui/menus/menu_base.hpp"
 #include "ui/list.hpp"
 #include "fs.hpp"
+#include "running_build.hpp"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -46,7 +47,6 @@ private:
     void CheckCachedFirmware(const FirmwareEntry& release, const std::string& display_name);
     void PromptInstallFirmware(const std::string& display_name, const fs::FsPath& path = "/firmware");
     void InstallFirmware(const std::string& display_name, const fs::FsPath& path = "/firmware");
-    void CheckHatsFirmwareSupport(const std::string& target_version, const std::function<void()>& callback, const std::function<void()>& cancel_callback = [](){});
     void UpdateSubheading();
     bool IsDowngrade(const std::string& target_version);
     bool HasDifferentFuseCount(const std::string& target_version);
@@ -66,6 +66,7 @@ private:
     bool m_fuses_loaded{false};
     std::string m_error_message;
     std::string m_current_firmware;
+    sphaira::hats::RunningBuildInfo m_running_build;
     int m_current_fuse_count{-1}; // Current firmware's fuse count
 };
 

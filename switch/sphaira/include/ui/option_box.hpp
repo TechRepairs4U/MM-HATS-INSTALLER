@@ -23,7 +23,6 @@ private:
     bool m_selected{false};
 };
 
-// todo: support multiline messages
 // todo: support upto 4 options.
 class OptionBox final : public Widget {
 public:
@@ -44,6 +43,8 @@ public:
 
 private:
     auto Setup(s64 index) -> void; // common setup values
+    void LayoutMessage();
+    void ScrollMessage(float amount);
     void SetIndex(s64 index);
 
 private:
@@ -53,6 +54,13 @@ private:
     const bool m_own_image;
 
     Vec4 m_spacer_line{};
+    Vec4 m_text_area{};
+    float m_text_height{};
+    float m_text_top{};
+    float m_scroll_offset{};
+    float m_touch_scroll_start{};
+    bool m_scrollable{};
+    bool m_touch_scrolling{};
 
     s64 m_index{};
     std::vector<OptionBoxEntry> m_entries{};
