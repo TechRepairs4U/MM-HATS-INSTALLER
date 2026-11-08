@@ -33,7 +33,7 @@ option(ENABLE_DEVOPTAB_SFTP "" OFF)
 # MINOR: new features (backwards compatible)
 # PATCH: bug fixes (backwards compatible)
 set(HATS_TOOLS_APP_NAME "MM HATS INSTALLER")
-set(HATS_TOOLS_VERSION "2.1.7")
+set(HATS_TOOLS_VERSION "2.1.8")
 set(sphaira_VERSION ${HATS_TOOLS_VERSION})
 
 project(mm-tools
@@ -772,6 +772,8 @@ if (NANOVG_DK_RENDERER_CPP_HAS_EMBEDDED_SHADERS EQUAL -1)
     )
     file(WRITE ${nanovg_SOURCE_DIR}/source/dk_renderer.cpp "${NANOVG_DK_RENDERER_CPP}")
 endif()
+
+include(cmake/nanovg_command_memory.cmake)
 
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})

@@ -1,10 +1,18 @@
-# MM HATS INSTALLER v2.1.7
+# MM HATS INSTALLER v2.1.8
 
 <p align="center">
   <img src="images/home-screen-preview.png" width="65%" />
 </p>
 
 Custom HATS installer for Magic Monkei.
+
+v2.1.8 fixes the graphics command-buffer exhaustion identified in a v2.1.7
+crash log when opening Fetch Firmware (`0x767 / 2359-0003`). The renderer now
+adds command blocks as needed and reuses them only after the GPU finishes.
+Host stress tests cover frames over 64 times the previous 128 KiB limit,
+repeated-frame reuse, oversized reservations and cleanup. Device verification
+of this fix is pending. Use **X / Check updates** from v2.1.7, or install the
+new NSP over the existing app.
 
 v2.1.7 adds GitHub updates to the installed **NSP edition**. It checks at startup;
 press **X / Check updates** to retry manually. Choose **Update** to download the

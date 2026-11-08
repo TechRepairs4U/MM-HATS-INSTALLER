@@ -72,6 +72,24 @@ Before release, also build the full NRO and bundled payload with devkitPro and v
 
 Host tests do not validate device services, real SD-card I/O, UI layout or reboot behavior. A complete devkitPro build and device checks are required before release.
 
+## Renderer command memory
+
+```sh
+c++ -std=c++20 -Wall -Wextra -Werror -fsanitize=address,undefined \
+    -I tests/renderer_stubs -I sphaira/include tests/frame_command_memory_test.cpp \
+    -o /tmp/frame_command_memory_test
+/tmp/frame_command_memory_test
+```
+
+The actual command-memory provider is exercised against fake deko3d/pool
+interfaces. The test reproduces fixed-buffer exhaustion, then checks 100 frames
+of over 8 MiB, extension during fence recording, reuse without allocation growth,
+oversized/aligned requests, allocation failure, overflow rejection, and freeing
+only after the fence completes. A devkitPro build checks the real interfaces.
+On hardware, open Firmware repeatedly, scroll its full list, and return home;
+also check overlays, HATS and Cheats in handheld and docked modes. Host tests do
+not execute GPU commands.
+
 ## NSP updater
 
 NSP updater host checks (using the same yyjson object as above):
