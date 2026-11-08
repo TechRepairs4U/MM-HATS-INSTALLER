@@ -6,6 +6,7 @@
 #include "app_version.hpp"
 #include "bundled_files.hpp"
 #include <array>
+#include "yati/yati.hpp"
 
 namespace {
 struct StartupSd {
@@ -66,6 +67,8 @@ int main(int argc, char** argv) {
         }
     }
 
+    if (const auto rc = sphaira::yati::CleanupSelfUpdate(); R_FAILED(rc))
+        log_write("self-update: deferred old-content cleanup: 0x%X\n", rc);
     auto app = std::make_unique<sphaira::App>(argv0);
     app->m_bundled_assets_result = bundled_result;
     app->Push<sphaira::ui::menu::hats::MainMenu>();

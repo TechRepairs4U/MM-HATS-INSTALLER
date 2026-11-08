@@ -26,7 +26,7 @@ with `c++ -std=c++20 -I sphaira/include tests/NAME.cpp -o /tmp/NAME`.
 For the NSP edition, verify a HOME-menu launch with no NRO installed and check
 that the three cards, background and installer payload are available. A failed
 asset preparation must report an error. The NRO ZIP updater and hbmenu replacement
-must remain inactive for the installed NSP; update it by installing a new NSP.
+must remain inactive for the installed NSP. From v2.1.7, its separate NSP updater downloads, validates, installs and reloads the HOME-menu application.
 
 These tests compile the same release, firmware-version and cheat-text helpers used by the application. They do not require libnx or a Switch.
 
@@ -71,6 +71,28 @@ Before release, also build the full NRO and bundled payload with devkitPro and v
 - Check the refreshed home screen on hardware: all three cards fit, touch and controller selection agree, text is readable and the wallpaper/icons load correctly.
 
 Host tests do not validate device services, real SD-card I/O, UI layout or reboot behavior. A complete devkitPro build and device checks are required before release.
+
+## NSP updater
+
+NSP updater host checks (using the same yyjson object as above):
+
+```sh
+c++ -std=c++20 -I sphaira/include -I /path/to/yyjson/src tests/self_update_test.cpp /tmp/yyjson.o -o /tmp/self_update_test
+/tmp/self_update_test /path/to/MM-HATS-INSTALLER.nsp
+python3 tests/update_tls_test.py
+```
+
+These check NSP/ZIP selection, receipt separation, GitHub digest and URL rules,
+real NSP bounds, malformed/overlapping entries, publication ordering and rollback
+on simulated registration/metadata/launch-record failures. The TLS test compiles
+the actual update option block against host libcurl, checks GitHub with the
+bundled CA file, and verifies that an invalid CA fails.
+
+On hardware, verify NSP update and automatic reload from both SD and internal
+storage, first-boot old-content cleanup, unchanged game-install settings, and
+missing on-SD prod.keys. Verify failed downloads and invalid packages leave the
+current app launchable. v2.1.6 and earlier require a manual installation first.
+Host tests cannot substitute for these device checks.
 
 ## GitHub exclusion list
 

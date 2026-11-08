@@ -19,6 +19,9 @@
 #include "hats_version.hpp"
 #include "hats_contents_policy.hpp"
 #include "i18n.hpp"
+#include "self_update_policy.hpp"
+#include "bundled_files.hpp"
+#include "yati/yati.hpp"
 
 #include <yyjson.h>
 #include <cstring>
@@ -74,6 +77,9 @@ MainMenu::MainMenu() : MenuBase{"MAGIC MONKEI", MenuFlag_None} {
         }}),
         std::make_pair(Button::B, Action{"Exit"_i18n, [this](){
             App::Exit();
+        }}),
+        std::make_pair(Button::X, Action{"Check updates"_i18n, [this](){
+            CheckForUpdates(true);
         }}),
         std::make_pair(Button::START, Action{App::Exit})
     );
@@ -245,27 +251,30 @@ void MainMenu::LoadIcons() {
     m_icons_loaded = true;
 }
 
-void MainMenu::CheckForUpdates() {
-    // Installed NSOs must be updated by installing a new NSP. Replacing an SD
-    // NRO cannot update the running application and must never report success.
-    if (envIsNso()) return;
-    if (m_update_check_started) {
+void MainMenu::CheckForUpdates(bool manual) {
+    if (m_update_check_inflight || (m_update_check_started && !manual)) {
         return;
     }
 
     m_update_check_started = true;
+    m_update_check_inflight = true;
+    const bool installed_nsp = envIsNso();
 
     const bool queued = curl::Api().ToMemoryAsync(
-        curl::Url{UPDATE_RELEASES_URL},
+        curl::Url{std::string(UPDATE_RELEASES_URL) + "?mm_update=" + std::to_string(armGetSystemTick())},
+        curl::Flags{curl::Flag_VerifyTls},
         curl::StopToken{GetToken()},
         curl::Header{
             {"Accept", "application/vnd.github+json"},
             {"X-GitHub-Api-Version", "2022-11-28"},
             {"Cache-Control", "no-cache"},
         },
-        curl::OnComplete{[this](auto& result) {
+        curl::OnProgress{[](s64, s64 downloaded, s64, s64) { return downloaded <= 4 * 1024 * 1024; }},
+        curl::OnComplete{[this, installed_nsp, manual](auto& result) {
+            m_update_check_inflight = false;
             if (!result.success || result.data.empty()) {
                 log_write("update check failed for %s (HTTP %ld)\n", UPDATE_REPOSITORY, result.code);
+                App::Notify("Could not check GitHub updates. Press X to retry.");
                 return;
             }
 
@@ -286,20 +295,39 @@ void MainMenu::CheckForUpdates() {
                 return;
             }
 
-            auto entries = ParsePackReleases(root);
+            auto entries = ParseAppReleases(root, installed_nsp);
             yyjson_doc_free(document);
-            std::erase_if(entries, [](const auto& entry) { return AppUpdateReceipt(entry).empty(); });
+            std::erase_if(entries, [installed_nsp](const auto& entry) {
+                return AppUpdateReceipt(entry).empty() || (installed_nsp &&
+                    (!self_update::IsTrustedAsset(entry.download_url) || !self_update::IsDigest(entry.asset_digest) ||
+                    !entry.size || entry.size > self_update::MaxPackageSize));
+            });
 
             if (entries.empty()) {
-                log_write("update check: Latest has no uploaded ZIP assets\n");
+                log_write("update check: Latest has no valid %s assets\n", installed_nsp ? "NSP" : "ZIP");
+                if (manual) App::Notify("Latest has no compatible update package.");
                 return;
             }
 
             fs::FsNativeSd fs;
             std::vector<u8> receipt;
-            if (R_SUCCEEDED(fs.read_entire_file(UPDATE_RECEIPT_PATH, receipt)) &&
+            const auto receipt_path = installed_nsp ? self_update::ReceiptPath : UPDATE_RECEIPT_PATH;
+            if (R_SUCCEEDED(fs.read_entire_file(receipt_path, receipt)) &&
                 IsInstalledAppRelease(entries, std::string(receipt.begin(), receipt.end()))) {
                 log_write("update check: Latest upload is already installed\n");
+                if (manual) App::Notify("MM HATS INSTALLER is up to date.");
+                return;
+            }
+
+            // A first manual NSP installation has no asset receipt. Seed it for
+            // our exact running release; future reuploads still compare identity.
+            if (installed_nsp && receipt.empty() && entries.size() == 1 &&
+                entries[0].tag_name == "v" HATS_TOOLS_VERSION) {
+                const auto baseline = AppUpdateReceipt(entries[0]);
+                const auto rc = sphaira::hats::ReplaceBundledFile(fs, receipt_path,
+                    std::span(reinterpret_cast<const u8*>(baseline.data()), baseline.size()));
+                log_write("self-update: initial release receipt: 0x%X\n", rc);
+                if (manual) App::Notify("MM HATS INSTALLER is up to date.");
                 return;
             }
 
@@ -307,11 +335,11 @@ void MainMenu::CheckForUpdates() {
             // Package contents are checked before any installed files change.
             App::Push<ui::OptionBox>(
                 "The latest MM HATS INSTALLER release is available on GitHub.\n"
-                "Download and install its package?",
+                "Download and install it? The NSP edition reloads automatically.",
                 "Later"_i18n,
                 "Update"_i18n,
                 1,
-                [this, entries](auto index) {
+                [this, entries, installed_nsp](auto index) {
                     if (!index || *index != 1) return;
                     if (entries.size() == 1) {
                         PromptAppUpdate(entries.front());
@@ -319,7 +347,7 @@ void MainMenu::CheckForUpdates() {
                     }
                     ui::PopupList::Items items;
                     for (const auto& entry : entries) items.push_back(entry.asset_name);
-                    App::Push<ui::PopupList>("Choose installer ZIP", items,
+                    App::Push<ui::PopupList>(installed_nsp ? "Choose installer NSP" : "Choose installer ZIP", items,
                         [this, entries](auto selected) {
                             if (selected && *selected >= 0 && static_cast<size_t>(*selected) < entries.size())
                                 PromptAppUpdate(entries[*selected]);
@@ -330,15 +358,81 @@ void MainMenu::CheckForUpdates() {
     );
 
     if (!queued) {
+        m_update_check_inflight = false;
         log_write("failed to queue update check for %s\n", UPDATE_REPOSITORY);
     }
 }
 
 void MainMenu::PromptAppUpdate(const ReleaseEntry& release) {
+    if (envIsNso()) {
+        StartNspUpdate(release);
+        return;
+    }
     m_update_version = release.name;
     m_update_download_url = release.download_url;
     m_update_receipt = AppUpdateReceipt(release);
     StartUpdate();
+}
+
+void MainMenu::StartNspUpdate(const ReleaseEntry& release) {
+    App::Push<ui::ProgressBox>(0, "Updating MM HATS INSTALLER", release.asset_name,
+        [release](auto pbox) -> Result {
+            R_UNLESS(self_update::IsTrustedAsset(release.download_url) && self_update::IsDigest(release.asset_digest) &&
+                release.size && release.size <= self_update::MaxPackageSize, self_update::InvalidPackage);
+            fs::FsNativeSd sd;
+            R_TRY(sd.GetFsOpenResult());
+            const fs::FsPath path{"/switch/mm-tools/cache/mm-tools-update.nsp"};
+            R_TRY(sd.CreateDirectoryRecursivelyWithPath(path));
+            if (sd.FileExists(path)) R_TRY(sd.DeleteFile(path));
+            ON_SCOPE_EXIT(sd.DeleteFile(path));
+            pbox->NewTransfer("Downloading update from GitHub");
+            const auto result = curl::Api().ToFile(
+                curl::Url{release.download_url}, curl::Path{path}, curl::Flags{curl::Flag_VerifyTls},
+                curl::Header{{"Cache-Control", "no-cache, no-store"}},
+                curl::OnProgress{[pbox, limit = release.size](s64, s64 received, s64, s64) {
+                    pbox->UpdateTransfer(received, limit);
+                    return received >= 0 && static_cast<u64>(received) <= limit && !pbox->ShouldExit();
+                }});
+            R_UNLESS(result.success, Result_MainFailedToDownloadUpdate);
+            pbox->NewTransfer("Verifying update");
+            fs::File file;
+            R_TRY(sd.OpenFile(path, FsOpenMode_Read, &file));
+            s64 size{};
+            R_TRY(file.GetSize(&size));
+            R_UNLESS(size > 0 && static_cast<u64>(size) == release.size, self_update::InvalidPackage);
+            Sha256Context hash;
+            sha256ContextCreate(&hash);
+            std::vector<u8> buffer(64 * 1024);
+            for (s64 offset = 0; offset < size;) {
+                const auto amount = std::min<s64>(buffer.size(), size - offset);
+                u64 actual{};
+                R_TRY(file.Read(offset, buffer.data(), amount, FsReadOption_None, &actual));
+                R_UNLESS(actual == static_cast<u64>(amount), self_update::InvalidPackage);
+                sha256ContextUpdate(&hash, buffer.data(), actual);
+                offset += actual;
+            }
+            file.Close();
+            u8 digest[SHA256_HASH_SIZE];
+            sha256ContextGetHash(&hash, digest);
+            constexpr char hex[] = "0123456789abcdef";
+            std::string expected = "sha256:";
+            for (auto byte : digest) { expected += hex[byte >> 4]; expected += hex[byte & 15]; }
+            R_UNLESS(expected == release.asset_digest, self_update::InvalidPackage);
+            R_TRY(yati::InstallSelfUpdate(pbox, &sd, path));
+            const auto receipt = AppUpdateReceipt(release);
+            const auto receipt_result = sphaira::hats::ReplaceBundledFile(sd, self_update::ReceiptPath,
+                std::span(reinterpret_cast<const u8*>(receipt.data()), receipt.size()));
+            // Installation has committed; receipt failure must not prevent reload.
+            log_write("self-update: installed; receipt result: 0x%X\n", receipt_result);
+            return 0;
+        },
+        [](Result rc) {
+            if (R_FAILED(rc)) {
+                App::PushErrorBox(rc, "Could not complete the NSP update. Check the connection and free space, then press X to retry.");
+                return;
+            }
+            App::ExitRestart();
+        }, false);
 }
 
 void MainMenu::StartUpdate() {
@@ -388,6 +482,7 @@ void MainMenu::StartUpdate() {
                 pbox->NewTransfer("Downloading MM HATS INSTALLER package " + update_version);
                 const auto result = curl::Api().ToFile(
                     curl::Url{download_url},
+                    curl::Flags{curl::Flag_VerifyTls},
                     curl::Path{zip_path},
                     curl::Header{{"Cache-Control", "no-cache"}},
                     curl::OnProgress{pbox->OnDownloadProgressCallback()}

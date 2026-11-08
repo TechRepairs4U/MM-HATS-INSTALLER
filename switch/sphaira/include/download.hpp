@@ -21,6 +21,8 @@ enum {
 
     // sets CURLOPT_NOBODY.
     Flag_NoBody = 1 << 1,
+    // Verify HTTPS with the embedded CA bundle, including redirects.
+    Flag_VerifyTls = 1 << 2,
 };
 
 enum class Priority {

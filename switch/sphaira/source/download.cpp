@@ -616,6 +616,18 @@ void SetCommonCurlOptions(CURL* curl, const Api& e) {
     CURL_EASY_SETOPT_LOG(curl, CURLOPT_FOLLOWLOCATION, 1L);
     CURL_EASY_SETOPT_LOG(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     CURL_EASY_SETOPT_LOG(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    if (e.GetFlags() & Flag_VerifyTls) {
+        CURL_EASY_SETOPT_LOG(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+        CURL_EASY_SETOPT_LOG(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+        // Startup verifies/restores this bundled CA file. SD stays mounted for
+        // asynchronous requests, including on the older devkitPro curl port.
+        CURL_EASY_SETOPT_LOG(curl, CURLOPT_CAINFO, "sdmc:/config/mm-tools/hats-ca-bundle.pem");
+        CURL_EASY_SETOPT_LOG(curl, CURLOPT_PROTOCOLS, static_cast<long>(CURLPROTO_HTTPS));
+        CURL_EASY_SETOPT_LOG(curl, CURLOPT_REDIR_PROTOCOLS, static_cast<long>(CURLPROTO_HTTPS));
+        CURL_EASY_SETOPT_LOG(curl, CURLOPT_CONNECTTIMEOUT, 20L);
+        CURL_EASY_SETOPT_LOG(curl, CURLOPT_LOW_SPEED_LIMIT, 1024L);
+        CURL_EASY_SETOPT_LOG(curl, CURLOPT_LOW_SPEED_TIME, 30L);
+    }
     CURL_EASY_SETOPT_LOG(curl, CURLOPT_FAILONERROR, 1L);
     CURL_EASY_SETOPT_LOG(curl, CURLOPT_NOPROGRESS, 0L);
     CURL_EASY_SETOPT_LOG(curl, CURLOPT_SHARE, g_curl_share);

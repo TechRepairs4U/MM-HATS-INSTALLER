@@ -29,7 +29,8 @@ private:
     void OnSelect();
     void RefreshVersionInfo();
     void LoadIcons();
-    void CheckForUpdates();
+    void CheckForUpdates(bool manual = false);
+    void StartNspUpdate(const ReleaseEntry& release);
     void PromptAppUpdate(const ReleaseEntry& release);
     void StartUpdate();
 
@@ -52,6 +53,7 @@ private:
     bool m_is_erista{true};
     bool m_icons_loaded{};
     bool m_update_check_started{};
+    bool m_update_check_inflight{};
 };
 
 } // namespace sphaira::ui::menu::hats

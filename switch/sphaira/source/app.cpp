@@ -961,6 +961,11 @@ void App::Exit() {
 
 void App::ExitRestart() {
     if (envIsNso()) {
+        const auto rc = appletRestartProgram(nullptr, 0);
+        if (R_FAILED(rc)) {
+            PushErrorBox(rc, "The update is installed, but automatic reload failed. Close the app fully and reopen it from HOME.");
+            return;
+        }
         Exit();
         return;
     }

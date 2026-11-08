@@ -10,6 +10,7 @@ namespace sphaira::hats {
 
 inline constexpr const char* BundledFiles[] = {
     "/switch/mm-tools/hats-installer.bin",
+    "/config/mm-tools/hats-ca-bundle.pem",
     "/config/mm-tools/background.rgba",
     "/config/mm-tools/hekate_ipl_mod.ini",
     "/config/mm-tools/icons/fetch-hats.rgba",
@@ -40,6 +41,7 @@ inline bool KeepAppFile(std::string_view path, std::string_view running_nro) {
         "/config/mm-tools/config.ini", "/config/mm-tools/playlog.ini", "/config/mm-tools/log.txt",
         "/switch/mm-tools/cache/etag_v2.json",
         "/config/mm-tools/installed-app-release.txt", "/config/mm-tools/managed-sysmodules.txt",
+        "/config/mm-tools/installed-nsp-release.txt", "/config/mm-tools/nsp-update-cleanup.bin",
         "/config/mm-tools/hekate_ipl.ini.bak", "/config/mm-tools/cheat-metadata.json",
         "/config/mm-tools/cheatslips_token.json"
     }) if (path == kept) return true;

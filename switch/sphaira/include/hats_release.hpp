@@ -5,6 +5,7 @@
 #include <cctype>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace sphaira::ui::menu::hats {
@@ -27,7 +28,7 @@ struct ReleaseEntry {
 };
 
 // Tags are identifiers, not versions. Use exactly the assets GitHub returns.
-inline void ParsePackRelease(yyjson_val* release, std::vector<ReleaseEntry>& entries) {
+inline void ParsePackRelease(yyjson_val* release, std::vector<ReleaseEntry>& entries, std::string_view extension = ".zip") {
     if (!yyjson_is_obj(release) || yyjson_get_bool(yyjson_obj_get(release, "draft"))) return;
 
     const auto string_value = [](yyjson_val* obj, const char* key) -> std::string {
@@ -58,7 +59,7 @@ inline void ParsePackRelease(yyjson_val* release, std::vector<ReleaseEntry>& ent
         std::transform(lower.begin(), lower.end(), lower.begin(),
             [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         // Asset names become cache filenames: never accept paths or partial ZIPs.
-        if (lower.size() <= 4 || !lower.ends_with(".zip") ||
+        if (lower.size() <= extension.size() || !lower.ends_with(extension) ||
             entry.asset_name.find_first_of("/\\:") != std::string::npos ||
             !entry.download_url.starts_with("https://")) continue;
         const auto state = string_value(asset, "state");
@@ -67,6 +68,13 @@ inline void ParsePackRelease(yyjson_val* release, std::vector<ReleaseEntry>& ent
         entry.name = (base.name.empty() ? base.tag_name : base.name) + " - " + entry.asset_name;
         entries.push_back(std::move(entry));
     }
+}
+
+inline auto ParseAppReleases(yyjson_val* root, bool installed_nsp) -> std::vector<ReleaseEntry> {
+    std::vector<ReleaseEntry> entries;
+    if (yyjson_is_obj(root) && !yyjson_get_bool(yyjson_obj_get(root, "prerelease")))
+        ParsePackRelease(root, entries, installed_nsp ? ".nsp" : ".zip");
+    return entries;
 }
 
 inline auto ParsePackReleases(yyjson_val* root) -> std::vector<ReleaseEntry> {

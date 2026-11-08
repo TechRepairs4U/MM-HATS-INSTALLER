@@ -33,7 +33,7 @@ option(ENABLE_DEVOPTAB_SFTP "" OFF)
 # MINOR: new features (backwards compatible)
 # PATCH: bug fixes (backwards compatible)
 set(HATS_TOOLS_APP_NAME "MM HATS INSTALLER")
-set(HATS_TOOLS_VERSION "2.1.6")
+set(HATS_TOOLS_VERSION "2.1.7")
 set(sphaira_VERSION ${HATS_TOOLS_VERSION})
 
 project(mm-tools
@@ -851,6 +851,7 @@ dkp_add_asset_target(sphaira_romfs ${CMAKE_CURRENT_BINARY_DIR}/romfs)
 set(mm_package ${CMAKE_CURRENT_BINARY_DIR}/romfs/mm-package)
 set(mm_support_files
     ${mm_package}/switch/mm-tools/hats-installer.bin
+    ${mm_package}/config/mm-tools/hats-ca-bundle.pem
     ${mm_package}/config/mm-tools/background.rgba
     ${mm_package}/config/mm-tools/hekate_ipl_mod.ini
 )
@@ -869,6 +870,7 @@ add_custom_target(mm_bundled_files
         ${CMAKE_SOURCE_DIR}/payload/output/hats-installer.bin ${mm_package}/switch/mm-tools/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/assets/external-background/background.rgba
+        ${CMAKE_SOURCE_DIR}/assets/romfs/hats-ca-bundle.pem
         ${CMAKE_SOURCE_DIR}/assets/romfs/hekate_ipl_mod.ini ${mm_package}/config/mm-tools/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${mm_icons} ${mm_package}/config/mm-tools/icons/
     BYPRODUCTS ${mm_support_files}

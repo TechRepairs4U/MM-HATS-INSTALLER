@@ -43,6 +43,7 @@ mkdir -p out/config/mm-tools/icons/
 cp build/Release/mm-tools.nro out/switch/mm-tools/mm-tools.nro
 cp payload/output/hats-installer.bin out/switch/mm-tools/hats-installer.bin
 cp assets/romfs/hekate_ipl_mod.ini out/config/mm-tools/hekate_ipl_mod.ini
+cp assets/romfs/hats-ca-bundle.pem out/config/mm-tools/hats-ca-bundle.pem
 cp config.ini out/config/mm-tools/config.ini
 cp assets/external-icons/*.rgba out/config/mm-tools/icons/
 cp assets/external-background/background.rgba out/config/mm-tools/background.rgba

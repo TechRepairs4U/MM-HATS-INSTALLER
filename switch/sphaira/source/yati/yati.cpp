@@ -20,6 +20,9 @@
 #include "app.hpp"
 #include "i18n.hpp"
 #include "log.hpp"
+#include "self_update_policy.hpp"
+#include "bundled_files.hpp"
+#include "app_version.hpp"
 
 #include <zstd.h>
 #include <minIni.h>
@@ -335,7 +338,7 @@ struct Yati {
     Yati(ui::ProgressBox*, source::Base*);
     ~Yati();
 
-    Result Setup(const ConfigOverride& override);
+    Result Setup(const ConfigOverride& override, bool self_update = false);
     Result InstallNca(std::span<TikCollection> tickets, NcaCollection& nca);
     Result InstallNcaInternal(std::span<TikCollection> tickets, NcaCollection& nca);
     Result InstallCnmtNca(std::span<TikCollection> tickets, CnmtCollection& cnmt, const container::Collections& collections);
@@ -367,6 +370,8 @@ struct Yati {
     std::unique_ptr<container::Base> container{};
     Config config{};
     keys::Keys keys{};
+    ncm::ContentStorageRecord self_record{};
+    bool spl_ready{}, ns_ready{}, es_ready{};
 };
 
 auto ThreadData::GetResults() volatile -> Result {
@@ -864,9 +869,9 @@ Yati::Yati(ui::ProgressBox* _pbox, source::Base* _source) : pbox{_pbox}, source{
 }
 
 Yati::~Yati() {
-    splCryptoExit();
-    ns::Exit();
-    es::Exit();
+    if (spl_ready) splCryptoExit();
+    if (ns_ready) ns::Exit();
+    if (es_ready) es::Exit();
 
     for (size_t i = 0; i < std::size(NCM_STORAGE_IDS); i++) {
         ncmContentMetaDatabaseClose(std::addressof(ncm_db[i]));
@@ -879,7 +884,7 @@ Yati::~Yati() {
     // ui::menu::game::SignalChange();
 }
 
-Result Yati::Setup(const ConfigOverride& override) {
+Result Yati::Setup(const ConfigOverride& override, bool self_update) {
     config.sd_card_install = override.sd_card_install.value_or(App::GetApp()->m_install_sd.Get());
     config.allow_downgrade = App::GetApp()->m_allow_downgrade.Get();
     config.skip_if_already_installed = App::GetApp()->m_skip_if_already_installed.Get();
@@ -901,10 +906,32 @@ Result Yati::Setup(const ConfigOverride& override) {
 
     R_TRY(source->GetOpenResult());
     R_TRY(splCryptoInitialize());
+    spl_ready = true;
     R_TRY(ns::Initialize());
-    R_TRY(es::Initialize());
+    ns_ready = true;
+    if (!self_update) {
+        R_TRY(es::Initialize());
+        es_ready = true;
+    }
+
+    if (self_update) {
+        std::vector<ncm::ContentStorageRecord> records;
+        R_TRY(ns::GetApplicationRecords(self_update::TitleId, records));
+        R_UNLESS(records.size() == 1 && records[0].key.id == self_update::TitleId &&
+            records[0].key.type == NcmContentMetaType_Application &&
+            (records[0].storage_id == NcmStorageId_SdCard || records[0].storage_id == NcmStorageId_BuiltInUser), self_update::InvalidPackage);
+        self_record = records.front();
+        // Self-update has its own policy. User game-install settings must never
+        // silently skip the app, modify its contents, or move it to another disk.
+        config = {};
+        config.sd_card_install = self_record.storage_id == NcmStorageId_SdCard;
+        config.skip_rsa_header_fixed_key_verify = true; // unsigned homebrew
+        config.skip_rsa_npdm_fixed_key_verify = true;
+        storage_id = static_cast<NcmStorageId>(self_record.storage_id);
+    }
 
     for (size_t i = 0; i < std::size(NCM_STORAGE_IDS); i++) {
+        if (self_update && NCM_STORAGE_IDS[i] != storage_id) continue;
         R_TRY(ncmOpenContentMetaDatabase(std::addressof(ncm_db[i]), NCM_STORAGE_IDS[i]));
         R_TRY(ncmOpenContentStorage(std::addressof(ncm_cs[i]), NCM_STORAGE_IDS[i]));
     }
@@ -912,7 +939,8 @@ Result Yati::Setup(const ConfigOverride& override) {
     cs = ncm_cs[config.sd_card_install];
     db = ncm_db[config.sd_card_install];
 
-    R_TRY(parse_keys(keys, true));
+    // Self-update only needs the header key derived by SPL, never prod.keys.
+    R_TRY(parse_keys(keys, !self_update));
     R_SUCCEED();
 }
 
@@ -1372,6 +1400,59 @@ Result Yati::RegisterNcasAndPushRecord(const CnmtCollection& cnmt, u32 latest_ve
     R_SUCCEED();
 }
 
+struct SelfUpdateJournal {
+    u64 magic{0x315550534e4d4d}; // MMNSPU1
+    u32 storage{};
+    u32 count{};
+    NcmContentMetaKey old_key{};
+    char version[16]{};
+    NcmContentId old_ids[16]{};
+    u8 hash[SHA256_HASH_SIZE]{};
+};
+
+struct SelfUpdateCommit {
+    Yati& installer;
+    CnmtCollection& cnmt;
+    std::vector<u8> old_metadata;
+
+    Result RegisterContent() {
+        auto register_one = [&](const NcaCollection& item) -> Result {
+            bool present{};
+            R_TRY(ncmContentStorageHas(&installer.cs, &present, &item.content_id));
+            if (!present) R_TRY(ncmContentStorageRegister(&installer.cs, &item.content_id, &item.placeholder_id));
+            return 0;
+        };
+        R_TRY(register_one(cnmt));
+        for (const auto& item : cnmt.ncas) R_TRY(register_one(item));
+        return 0;
+    }
+    Result SetMetadata() {
+        BufHelper data;
+        data.write(&cnmt.meta_header, sizeof(cnmt.meta_header));
+        data.write(cnmt.extended_header);
+        data.write(&cnmt.content_info, sizeof(cnmt.content_info));
+        for (const auto& info : cnmt.infos) data.write(&info.info, sizeof(info.info));
+        R_TRY(ncmContentMetaDatabaseSet(&installer.db, &cnmt.key, data.buf.data(), data.tell()));
+        return ncmContentMetaDatabaseCommit(&installer.db);
+    }
+    Result PushRecord() {
+        ncm::ContentStorageRecord record{};
+        record.key = cnmt.key;
+        record.storage_id = installer.storage_id;
+        R_TRY(ns::PushApplicationRecord(self_update::TitleId, &record, 1));
+        return ns::SetLowestLaunchVersion(self_update::TitleId, std::span(&record, 1));
+    }
+    void Rollback() {
+        // No old content was deleted. Restore the old metadata and launch record.
+        auto rc = ncmContentMetaDatabaseSet(&installer.db, &installer.self_record.key, old_metadata.data(), old_metadata.size());
+        if (R_SUCCEEDED(rc)) rc = ncmContentMetaDatabaseCommit(&installer.db);
+        log_write("self-update: restoring old metadata: 0x%X\n", rc);
+        rc = ns::PushApplicationRecord(self_update::TitleId, &installer.self_record, 1);
+        if (R_SUCCEEDED(rc)) rc = ns::SetLowestLaunchVersion(self_update::TitleId, std::span(&installer.self_record, 1));
+        log_write("self-update: restoring old launch record: 0x%X\n", rc);
+    }
+};
+
 Result InstallInternal(ui::ProgressBox* pbox, source::Base* source, const container::Collections& collections, const ConfigOverride& override) {
     auto yati = std::make_unique<Yati>(pbox, source);
     R_TRY(yati->Setup(override));
@@ -1519,6 +1600,157 @@ Result InstallInternalStream(ui::ProgressBox* pbox, source::Base* source, contai
 }
 
 } // namespace
+
+Result InstallSelfUpdate(ui::ProgressBox* pbox, fs::Fs* fs, const fs::FsPath& path) {
+    R_UNLESS(envIsNso() && hosversionAtLeast(5, 0, 0), self_update::InvalidPackage);
+    u64 running_id{};
+    R_TRY(svcGetInfo(&running_id, InfoType_ProgramId, CUR_PROCESS_HANDLE, 0));
+    R_UNLESS(running_id == self_update::TitleId, self_update::InvalidPackage);
+    std::vector<u8> data;
+    R_TRY(fs->read_entire_file(path, data));
+    std::vector<self_update::PackageEntry> parsed;
+    R_UNLESS(self_update::ParsePackage(data, parsed), self_update::InvalidPackage);
+    auto source = std::make_unique<source::File>(fs, path);
+    auto installer = std::make_unique<Yati>(pbox, source.get());
+    R_TRY(installer->Setup({}, true));
+    container::Collections collections;
+    unsigned kinds{};
+    for (const auto& entry : parsed) {
+        nca::Header header;
+        std::memcpy(&header, data.data() + entry.offset, sizeof(header));
+        crypto::cryptoAes128Xts(&header, &header, installer->keys.header_key, 0, 0x200, sizeof(header), false);
+        R_UNLESS(header.IsValid() && header.program_id == self_update::TitleId && header.size == entry.size &&
+            header.content_type <= nca::ContentType_Control, self_update::InvalidPackage);
+        const unsigned kind = 1U << header.content_type;
+        R_UNLESS(!(kinds & kind) && ((header.content_type == nca::ContentType_Meta) == entry.name.ends_with(".cnmt.nca")), self_update::InvalidPackage);
+        kinds |= kind;
+        collections.push_back({entry.name, static_cast<s64>(entry.offset), static_cast<s64>(entry.size)});
+    }
+    R_UNLESS(kinds == 7, self_update::InvalidPackage);
+    data.clear();
+    data.shrink_to_fit();
+
+    auto meta = std::find_if(collections.begin(), collections.end(), [](const auto& item) { return item.name.ends_with(".cnmt.nca"); });
+    CnmtCollection cnmt{NcaCollection{*meta}};
+    cnmt.type = NcmContentType_Meta;
+    ON_SCOPE_EXIT({
+        ncmContentStorageDeletePlaceHolder(&installer->cs, &cnmt.placeholder_id);
+        for (const auto& item : cnmt.ncas) ncmContentStorageDeletePlaceHolder(&installer->cs, &item.placeholder_id);
+    });
+    std::vector<TikCollection> tickets;
+    R_TRY(installer->InstallCnmtNca(tickets, cnmt, collections));
+    R_UNLESS(cnmt.key.id == self_update::TitleId && cnmt.key.type == NcmContentMetaType_Application &&
+        cnmt.ncas.size() == 2 && cnmt.infos.size() == 2 && cnmt.extended_header.size() == sizeof(NcmApplicationMetaExtendedHeader), self_update::InvalidPackage);
+    unsigned content_kinds{};
+    char new_version[16]{};
+    for (auto& item : cnmt.ncas) {
+        R_UNLESS(item.type == NcmContentType_Program || item.type == NcmContentType_Control, self_update::InvalidPackage);
+        R_UNLESS(!(content_kinds & (1U << item.type)), self_update::InvalidPackage);
+        content_kinds |= 1U << item.type;
+        R_TRY(installer->InstallNca(tickets, item));
+        R_UNLESS(item.header.program_id == self_update::TitleId && !item.modified &&
+            ((item.type == NcmContentType_Program && item.header.content_type == nca::ContentType_Program) ||
+             (item.type == NcmContentType_Control && item.header.content_type == nca::ContentType_Control)), self_update::InvalidPackage);
+        auto info = std::find_if(cnmt.infos.begin(), cnmt.infos.end(), [&](const auto& value) {
+            return !std::memcmp(&value.info.content_id, &item.content_id, sizeof(item.content_id));
+        });
+        u64 expected_size{};
+        R_UNLESS(info != cnmt.infos.end(), self_update::InvalidPackage);
+        ncmContentInfoSizeToU64(&info->info, &expected_size);
+        R_UNLESS(expected_size == static_cast<u64>(item.size) && !std::memcmp(info->hash, item.hash, sizeof(item.hash)), self_update::InvalidPackage);
+        if (item.type == NcmContentType_Control) {
+            fs::FsPath control_path;
+            R_TRY(ncmContentStorageFlushPlaceHolder(&installer->cs));
+            R_TRY(ncmContentStorageGetPlaceHolderPath(&installer->cs, control_path, sizeof(control_path), &item.placeholder_id));
+            R_TRY(nca::ParseControl(control_path, self_update::TitleId, new_version, sizeof(new_version), nullptr, offsetof(NacpStruct, display_version)));
+        }
+    }
+    R_UNLESS(new_version[0] && std::memchr(new_version, 0, sizeof(new_version)), self_update::InvalidPackage);
+    R_TRY(pbox->ShouldExitResult());
+
+    // Snapshot old metadata before publishing. It and its content stay available
+    // across failures and until the updated application actually boots.
+    SelfUpdateCommit commit{*installer, cnmt, {}};
+    u64 metadata_size{}, actual{};
+    R_TRY(ncmContentMetaDatabaseGetSize(&installer->db, &metadata_size, &installer->self_record.key));
+    R_UNLESS(metadata_size >= sizeof(NcmContentMetaHeader) && metadata_size <= 16384, self_update::InvalidPackage);
+    commit.old_metadata.resize(metadata_size);
+    R_TRY(ncmContentMetaDatabaseGet(&installer->db, &installer->self_record.key, &actual, commit.old_metadata.data(), metadata_size));
+    R_UNLESS(actual == metadata_size, self_update::InvalidPackage);
+    std::vector<NcmContentInfo> old_infos;
+    R_TRY(ncm::GetContentInfos(&installer->db, &installer->self_record.key, old_infos));
+    R_UNLESS(old_infos.size() <= 16, self_update::InvalidPackage);
+    SelfUpdateJournal journal;
+    journal.storage = installer->storage_id;
+    journal.old_key = installer->self_record.key;
+    journal.count = old_infos.size();
+    std::memcpy(journal.version, new_version, sizeof(new_version));
+    for (size_t i = 0; i < old_infos.size(); ++i) journal.old_ids[i] = old_infos[i].content_id;
+    sha256CalculateHash(journal.hash, &journal, offsetof(SelfUpdateJournal, hash));
+    R_TRY(hats::ReplaceBundledFile(*fs, self_update::CleanupPath,
+        std::span(reinterpret_cast<const u8*>(&journal), sizeof(journal))));
+    pbox->NewTransfer("Installing MM HATS INSTALLER");
+    R_TRY(self_update::Publish(commit));
+    ns::InvalidateApplicationControlCache(self_update::TitleId);
+    return 0;
+}
+
+Result CleanupSelfUpdate() {
+    if (!envIsNso()) return 0;
+    fs::FsNativeSd sd;
+    if (!sd.FileExists(self_update::CleanupPath)) return 0;
+    SelfUpdateJournal journal;
+    fs::File file;
+    R_TRY(sd.OpenFile(self_update::CleanupPath, FsOpenMode_Read, &file));
+    s64 size{};
+    u64 actual{};
+    R_TRY(file.GetSize(&size));
+    R_UNLESS(size == sizeof(journal), self_update::InvalidPackage);
+    R_TRY(file.Read(0, &journal, sizeof(journal), FsReadOption_None, &actual));
+    file.Close();
+    u8 hash[SHA256_HASH_SIZE];
+    sha256CalculateHash(hash, &journal, offsetof(SelfUpdateJournal, hash));
+    R_UNLESS(actual == sizeof(journal) && journal.magic == SelfUpdateJournal{}.magic && journal.count <= 16 &&
+        journal.old_key.id == self_update::TitleId && journal.old_key.type == NcmContentMetaType_Application &&
+        std::memchr(journal.version, 0, sizeof(journal.version)) && !std::memcmp(hash, journal.hash, sizeof(hash)), self_update::InvalidPackage);
+    if (std::strcmp(journal.version, HATS_TOOLS_VERSION)) return 0;
+    R_TRY(ns::Initialize());
+    ON_SCOPE_EXIT(ns::Exit());
+    std::vector<ncm::ContentStorageRecord> records;
+    R_TRY(ns::GetApplicationRecords(self_update::TitleId, records));
+    R_UNLESS(records.size() == 1 && records[0].key.id == self_update::TitleId && records[0].storage_id == journal.storage &&
+        (journal.storage == NcmStorageId_SdCard || journal.storage == NcmStorageId_BuiltInUser), self_update::InvalidPackage);
+    NcmContentStorage cs;
+    NcmContentMetaDatabase db;
+    R_TRY(ncmOpenContentStorage(&cs, static_cast<NcmStorageId>(journal.storage)));
+    ON_SCOPE_EXIT(ncmContentStorageClose(&cs));
+    R_TRY(ncmOpenContentMetaDatabase(&db, static_cast<NcmStorageId>(journal.storage)));
+    ON_SCOPE_EXIT(ncmContentMetaDatabaseClose(&db));
+    std::vector<NcmContentInfo> current;
+    R_TRY(ncm::GetContentInfos(&db, &records[0].key, current));
+    keys::Keys keys{};
+    R_TRY(keys::parse_keys(keys, false));
+    for (u32 i = 0; i < journal.count; ++i) {
+        const auto& id = journal.old_ids[i];
+        if (std::any_of(current.begin(), current.end(), [&](const auto& info) { return !std::memcmp(&id, &info.content_id, sizeof(id)); })) continue;
+        bool present{};
+        R_TRY(ncmContentStorageHas(&cs, &present, &id));
+        if (!present) continue;
+        nca::Header header;
+        R_TRY(ncmContentStorageReadContentIdFile(&cs, &header, sizeof(header), &id, 0));
+        crypto::cryptoAes128Xts(&header, &header, keys.header_key, 0, 0x200, sizeof(header), false);
+        R_UNLESS(header.IsValid() && header.program_id == self_update::TitleId, self_update::InvalidPackage);
+        R_TRY(ncmContentStorageDelete(&cs, &id));
+    }
+    if (std::memcmp(&journal.old_key, &records[0].key, sizeof(journal.old_key))) {
+        bool present{};
+        R_TRY(ncmContentMetaDatabaseHas(&db, &present, &journal.old_key));
+        if (present) R_TRY(ncmContentMetaDatabaseRemove(&db, &journal.old_key));
+        R_TRY(ncmContentMetaDatabaseCommit(&db));
+    }
+    R_TRY(sd.DeleteFile(self_update::CleanupPath));
+    return sd.Commit();
+}
 
 Result InstallFromFile(ui::ProgressBox* pbox, fs::Fs* fs, const fs::FsPath& path, const ConfigOverride& override) {
     auto source = std::make_unique<source::File>(fs, path);

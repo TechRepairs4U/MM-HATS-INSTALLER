@@ -10,9 +10,18 @@ are removed only inside `/switch/mm-tools` and `/config/mm-tools`; current
 settings, downloads and recovery data are retained. The bundled theme and
 payload path replace obsolete preferences.
 
-Launch the installed title from the HOME menu. Update it by installing the
-new NSP; the NRO/ZIP self-updater cannot update an installed NSP and is disabled
-for this edition. No separately installed NRO is required.
+Launch the installed title from the HOME menu. From v2.1.7 onward, it checks
+GitHub's Latest release for an NSP, downloads and verifies it, installs it in
+the app's existing storage and reloads automatically. X checks for updates
+manually. No separately installed NRO or on-console key file is required.
+Versions v2.1.6 and earlier need one manual NSP installation to gain this feature.
+
+Self-update validates the GitHub digest, complete package, content hashes and
+application title ID. It stages new content before publishing metadata, restores
+old metadata if publication fails, and keeps the running content until the new
+app boots. A checked cleanup journal then removes only obsolete content belonging
+to this application. Physical Switch testing remains necessary for installation
+and automatic relaunch.
 
 NSP encryption requires a legally obtained Switch keyset. Keep the keyset
 outside Git and pass it to the build only at build time:

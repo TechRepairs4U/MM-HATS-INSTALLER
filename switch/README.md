@@ -1,10 +1,24 @@
-# MM HATS INSTALLER v2.1.6
+# MM HATS INSTALLER v2.1.7
 
 <p align="center">
   <img src="images/home-screen-preview.png" width="65%" />
 </p>
 
 Custom HATS installer for Magic Monkei.
+
+v2.1.7 adds GitHub updates to the installed **NSP edition**. It checks at startup;
+press **X / Check updates** to retry manually. Choose **Update** to download the
+NSP, verify its SHA-256 and application identity, install it to the same storage,
+and reload automatically. Installation uses the Switch's own services and does
+not require `prod.keys` on the SD card. Existing app content is kept until the
+updated app starts; obsolete content is then cleaned up. NRO and NSP use separate
+update receipts, so one edition cannot hide updates for the other.
+
+**One manual installation is required when upgrading from NSP v2.1.6 or earlier:**
+those versions have no NSP updater. Install this NSP over the old app and reopen
+it. Subsequent NSP releases can be downloaded, installed and reloaded in the app.
+Host regression and package checks are available in the release; physical Switch
+verification is still pending.
 
 v2.1.6 repairs the outdated installer payload responsible for `0x668 / Module 104`. Both NSP and NRO now carry the current payload and artwork, compare their SD-card copies on every launch, and replace missing or different files. Correct files are not rewritten. Startup removes obsolete files from the installer's own folders, including old themes, duplicate legacy payloads, updater downloads and abandoned update files. The current running NRO, canonical NRO, settings, install receipt, logs, HATS/firmware downloads, cheat database, staging and Hekate recovery backup are preserved. The bundled theme and canonical payload path are selected automatically. HOME-menu themes, bootloader files, other apps and game data are outside this cleanup.
 
@@ -26,15 +40,15 @@ The app installs to `/switch/mm-tools/mm-tools.nro` and stores config/cache file
 
 For the NRO edition, extract the **entire ZIP**. The NRO also contains its own v1.2.1 repair payload and artwork, so startup can recover from incomplete older app updates.
 
-The **NSP edition** installs as a full HOME-menu application and includes its compiled program, artwork and installer payload. It checks and repairs its support files on every launch. Update this edition by installing the new NSP; the ZIP self-updater below applies to the NRO edition. See [BUILD_NSP.md](BUILD_NSP.md) for packaging instructions.
+The **NSP edition** installs as a full HOME-menu application and includes its compiled program, artwork and installer payload. It checks and repairs its support files on every launch. Starting with v2.1.7, it downloads and installs NSP updates from GitHub and reloads automatically. The ZIP updater applies to the NRO edition. See [BUILD_NSP.md](BUILD_NSP.md) for packaging instructions.
 
 The home screen reads the **running** Atmosphere version from the Switch, displaying `AMS x.x.x` and sysMMC/emuMMC. It shows **MAGIC MONKEI BUILD** when the running custom firmware identifies itself as `Magicmonkei.com`. Install the matching updated custom Atmosphere and reboot to enable that identification. Stock, other custom builds and older Magic Monkei builds display the AMS version under **ATMOSPHERE**. SD-card HATS version markers are still used for firmware compatibility information, but do not determine the home-screen build identity.
 
-MM HATS INSTALLER checks `TechRepairs4U/MM-HATS-INSTALLER/releases/latest` when it starts. The release tag and uploaded ZIP filename can be anything: neither semantic version ordering nor a filename prefix is required. GitHub's **Latest** release determines the update. If it has multiple uploaded ZIPs, the user chooses one. Checks happen automatically; installation requires confirmation.
+MM HATS INSTALLER checks `TechRepairs4U/MM-HATS-INSTALLER/releases/latest` when it starts. GitHub's **Latest** stable release determines the update. NSP selects uploaded NSPs; NRO selects uploaded ZIPs. Multiple compatible assets produce a choice. Checks happen automatically; choosing Update starts installation. Update requests verify HTTPS using the bundled CA file checked and restored on the SD card at startup; temporary RomFS mounts are not needed during requests. NSPs also require the GitHub SHA-256 digest, a complete three-NCA package and the installer title ID. NSP v2.1.7 and later reload automatically after a successful installation.
 
 After a successful app update, `/config/mm-tools/installed-app-release.txt` records the GitHub release/asset IDs, upload timestamp, size and digest. The same upload is not offered repeatedly, while a replacement upload or a different Latest release is detected even if the tag or name is reused or the version number decreases. A fresh manual installation without this record may offer the current Latest release once. Drafts and prereleases are excluded by the latest endpoint.
 
-The app validates the NRO, installer payload and four main-menu artwork files before installing them, then offers to restart. Startup verifies all nine support files, including the six icons. ZIP names are unrestricted; the package must still contain the normal `switch/mm-tools` and `config/mm-tools` contents. An older updater that replaces only the NRO is repaired on the next launch of v2.1.6.
+The app validates the NRO, installer payload and four main-menu artwork files before installing them, then offers to restart. Startup verifies all ten support files, including the six icons and bundled CA certificates. ZIP names are unrestricted; the package must still contain the normal `switch/mm-tools` and `config/mm-tools` contents. An older updater that replaces only the NRO is repaired on the next launch of v2.1.6.
 
 ## Windows and macOS apps
 
